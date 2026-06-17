@@ -207,18 +207,28 @@ def generate_sections(
     flags: List[RiskFlag],
     api_key: Optional[str] = None,
     max_sections: int = 5,
-) -> List[ReportSection]:
-    """Generate ReportSections for the top N highest-risk flags."""
-    # Prioritise: high > medium > low, then by clause_id order
+    return_mode: bool = False,
+):
+    """Generate ReportSections for the top N highest-risk flags.
+
+    Args:
+        return_mode: if True, returns (sections, mode_str) instead of just sections.
+                     mode_str is "claude_api" or "template_fallback".
+    """
     level_order = {"high": 0, "medium": 1, "low": 2, "none": 3}
     adverse_flags = [f for f in flags if f.risk_direction == "adverse"]
     sorted_flags = sorted(adverse_flags, key=lambda f: level_order.get(f.risk_level, 9))
     top_flags = sorted_flags[:max_sections]
 
+    key = api_key or os.environ.get("ANTHROPIC_API_KEY", "")
+    mode = "claude_api" if key else "template_fallback"
+
     sections = []
     for rank, flag in enumerate(top_flags, start=1):
-        section = analyze_flag(flag, api_key=api_key)
+        section = analyze_flag(flag, api_key=key or None)
         section.rank = rank
         sections.append(section)
 
+    if return_mode:
+        return sections, mode
     return sections
