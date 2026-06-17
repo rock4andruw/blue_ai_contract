@@ -1,13 +1,42 @@
 # 合約智能比對助理 — 專案說明
 
-**最後更新**: 2026-06-17  
+**最後更新**: 2026-06-18  
 **定位**: 讓法務與 PM 在 **30 分鐘內**完成過去需要 2 小時的合約審查  
 **一句話**: 「像有一個資深法務顧問幫你審合約」  
 **當前狀態**: 🟢 Demo 完整版完成（核心管道 + FastAPI + Demo UI）
 
 ---
 
-## 一、解決什麼問題
+## 一、問題有多大？（簡報數據）
+
+### 時間浪費
+
+> 專業法務人工審閱一份合約，平均耗時 **92 分鐘**；光搜尋特定條款就要 **2 小時**。
+>
+> — Juro 2026 Contract Management Statistics
+
+### 影響範圍廣
+
+> **71%** 的企業受訪者抱怨合約談判時間過長；
+> **40%** 的法務主管坦承合約風險管理是「緩慢且被動」的流程。
+>
+> — Infosys BPM CLM Report；Gartner Legal Department Survey
+
+### 財務代價高
+
+> 低效的合約流程平均延誤新產品上市 **6.5 天**，造成 **700 萬美元**營收損失；
+> 合約管理不善使企業流失高達 **9%** 年營收。
+>
+> — Gartner Research；McKinsey & Company
+
+### 我們的解法
+
+> **92 分鐘 → 30 分鐘以內**
+> 不只找差異，還告訴你哪個重要、風險多高、怎麼談。
+
+---
+
+## 二、解決什麼問題
 
 每次供應商送來新版合約，法務或 PM 需要：
 
@@ -19,7 +48,7 @@
 
 ---
 
-## 二、我們做了什麼
+## 三、我們做了什麼
 
 ### 核心功能（已實作）
 
@@ -29,6 +58,8 @@
 | **智能摘要** | 100 個差異 → **3-5 個主要變更**，濾掉行政性小改動 |
 | **風險分析** | 高／中／低三級標示，含商業影響說明 |
 | **對策建議** | 每個高風險項目給出 2-3 個可直接用於協商的方案 |
+| **Demo UI** | 靜態單頁，上傳 / 範例模式，一鍵展示 |
+| **FastAPI** | `POST /api/v1/contracts/compare`，JSON 回傳 |
 
 ### 與競品差異
 
@@ -38,6 +69,7 @@
 | 重點摘要（3-5 點） | ✅ | ❌ |
 | 風險等級標示 | ✅ | 部分 |
 | **協商對策建議** | ✅ | ❌ |
+| **可量化驗證**（gold set） | ✅ | ❌ |
 | 繁體中文 SLA 優化 | ✅ | ❌ |
 
 ### 技術架構
@@ -50,7 +82,7 @@
          ↓
 [Parser]  →  條款結構
          ↓
-[Alignment]  →  條款對齊
+[Alignment]  →  條款對齊（LCS + Needleman-Wunsch）
          ↓
 [Diff Engine]  →  新增 / 修改 / 刪除清單
          ↓
@@ -66,23 +98,34 @@
 
 **核心原則**：Risk Rule Engine 做判斷與標記，LLM 做解釋與表達。LLM 不決定原始風險等級，只負責把已標記的風險翻成白話並給對策。詳見 [docs/architecture/service_design.md](docs/architecture/service_design.md)。
 
+### 驗證數字
+
+| 指標 | 結果 | 說明 |
+| --- | --- | --- |
+| High-risk recall | **100%** | 高風險條款一筆不漏 |
+| Overall detection | 61% | 保守設計，寧可高判不漏判 |
+| 測試樣本 | 38 筆 gold set | v1 vs v2-v5 人工標註驗證 |
+
 ---
 
-## 三、Demo 展示
+## 四、Demo 展示
 
-### 輸入
-
-- 合約原版（`sla_contract/SLA-like Base Contract v1.md`）
-- 合約修訂版（`sla_contract/sla_v2_degrade.md` 至 `sla_v5_termination.md`）
-
-### 執行方式
+### 啟動方式
 
 ```bash
-python3 -m src.services.contract.orchestrator \
-  sla_contract/"SLA-like Base Contract v1.md" \
-  sla_contract/sla_v4_remove_protection.md \
-  --output samples/report_v1_vs_v4.md
+# Terminal 1 — 啟動後端
+uvicorn src.api.main:app --host 0.0.0.0 --port 8000
+
+# Terminal 2 — 開啟 UI
+open frontend/demo.html
 ```
+
+### 建議 Demo 流程（月會現場）
+
+1. 開啟 `frontend/demo.html`
+2. 點「範例模式」→ 選「**v4 保護刪減**」（最戲劇化，6 個高風險）
+3. 展示結果：整體評估 → 主要變更展開 → 協商對策
+4. 點「**下載 Markdown 報告**」
 
 ### 實際輸出（v1 vs v4，已驗證）
 
@@ -118,9 +161,21 @@ python3 -m src.services.contract.orchestrator \
 
 ---
 
-## 四、未來展望
+## 五、簡報大綱（20 分鐘）
 
-本次 Demo 聚焦 SLA 合約核心流程。後續可擴展至：
+| 時間 | Slide | 內容 |
+| --- | --- | --- |
+| 0-2 分 | 問題 | 92 分鐘、2 小時、71%、40% |
+| 2-4 分 | 代價 | 6.5 天延誤、700 萬損失、9% 營收流失（McKinsey） |
+| 4-6 分 | 現有工具不足 | Lumine AI 只列差異，缺協商建議 |
+| 6-10 分 | 我們的解法 | 架構圖 + 三層價值（摘要/風險/對策） |
+| 10-15 分 | **現場 Demo** | v4 範例模式，展示完整報告 |
+| 15-17 分 | 技術亮點 | Rule Engine 可量化（100% recall）、LLM 不做判斷 |
+| 17-20 分 | 商機 | 內部 ROI + 外部 SaaS 潛力 |
+
+---
+
+## 六、未來展望
 
 ### 短期（3 個月內）
 
@@ -142,7 +197,7 @@ python3 -m src.services.contract.orchestrator \
 
 ---
 
-## 五、商機與推廣潛力
+## 七、商機與推廣潛力
 
 **內部**：法務、採購、業務三個部門均有合約審查需求，估計每週節省人工工時 10+ 小時
 
@@ -152,11 +207,11 @@ python3 -m src.services.contract.orchestrator \
 - 可包裝為 SaaS 服務，針對 **科技業 IT 外包合約**、**零售業供應鏈合約** 切入
 - 與 Lumine AI 等國際產品相比，本工具針對**台灣法律用語與商業慣例**優化，是本土差異化優勢
 
-**評估**：以 Copilot 授權費為參考基準，企業版合約審查工具市場年費 $3,000-$10,000 / 席次，台灣目標市場 500 家企業，潛在規模約 $1.5B-$5B NTD
+**市場規模估算**：以 Copilot 授權費為參考基準，企業版合約審查工具年費 $3,000-$10,000 / 席次，台灣目標市場 500 家企業，潛在規模約 $1.5B-$5B NTD
 
 ---
 
-## 六、技術選型
+## 八、技術選型
 
 | 元件 | 選擇 | 理由 |
 | --- | --- | --- |
