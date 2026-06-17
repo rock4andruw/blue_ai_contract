@@ -3,7 +3,7 @@
 **最後更新**: 2026-06-17  
 **定位**: 讓法務與 PM 在 **30 分鐘內**完成過去需要 2 小時的合約審查  
 **一句話**: 「像有一個資深法務顧問幫你審合約」  
-**當前狀態**: 🟢 核心管道完成，進入 Demo 介面階段
+**當前狀態**: 🟢 Demo 完整版完成（核心管道 + FastAPI + Demo UI）
 
 ---
 
@@ -43,24 +43,25 @@
 ### 技術架構
 
 ```
-[使用者上傳兩份 PDF/DOCX]
+[Demo UI：frontend/demo.html]
+  上傳模式（drag & drop）/ 範例模式（v2-v5 一鍵）
          ↓
-[Parser]  →  條款結構（JSON）
+[FastAPI：POST /api/v1/contracts/compare]
          ↓
-[Alignment]  →  舊版/新版條款對齊
+[Parser]  →  條款結構
+         ↓
+[Alignment]  →  條款對齊
          ↓
 [Diff Engine]  →  新增 / 修改 / 刪除清單
          ↓
 [Risk Rule Engine]  →  risk_flag / level / trigger_reason
          ↓
-[Retrieval Service]  →  相似條款 / 公司標準條款
-         ↓
-[LLM Summary & Negotiation Service]
-  ├─ 白話摘要（翻譯風險旗標）
+[LLM Summary Service]
+  ├─ 白話摘要
   ├─ 重點收斂（3-5 個主要變更）
   └─ 協商對策（2-3 個可行方案）
          ↓
-[Report Generator  →  Dashboard JSON API]
+[Report Generator  →  JSON + Markdown 報告]
 ```
 
 **核心原則**：Risk Rule Engine 做判斷與標記，LLM 做解釋與表達。LLM 不決定原始風險等級，只負責把已標記的風險翻成白話並給對策。詳見 [docs/architecture/service_design.md](docs/architecture/service_design.md)。
