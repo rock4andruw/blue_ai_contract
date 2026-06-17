@@ -1,0 +1,39 @@
+﻿version,clause_id,change_type,risk_direction,risk_level,risk_code,note
+v4,4.3,deleted,adverse,medium,RISK_PROTECTION_REMOVED,移除「甲方要求停機、維護、不可抗力等不計入中斷時間」的明確排除條款，可能影響可用率計算透明度
+v4,6.3,unchanged,neutral,medium,none,
+v4,7.4,modified,adverse,medium,RISK_PROTECTION_REMOVED,由「不得轉委外」改為乙方可自由轉委外而無須甲方同意，降低甲方對實際執行者控制
+v4,8.3 / 8.4,modified,adverse,medium,RISK_CONFIDENTIALITY_WEAKENED,保密義務期間由終止後 3 年縮短為 1 年，機密保護期間變短
+v4,10.2,modified,adverse,medium,RISK_PENALTY_WEAKENED,保持 5% 折讓但門檻固定為 99.5%，搭配後面強責任限制，實際賠償效力變弱
+v4,11.1,modified,adverse,high,RISK_LIABILITY_CAP_CHANGED,賠償上限改為「當月服務費」，從原本 12 個月合計大幅縮小，實質賠償能力大幅下修
+v4,11.2,modified,adverse,high,RISK_LIABILITY_CAP_CHANGED,廣泛排除乙方對間接損害、資料損毀、營業中斷、第三人求償之責任
+v4,11.3,inserted,adverse,high,RISK_LIABILITY_CAP_CHANGED,明文規定無論原因為何，乙方不負超過上限之外的賠償責任，強化免責效果
+v4,12.3,inserted,adverse,medium,RISK_TERMINATION_CHANGED,甲方延遲付款 15 日，乙方可暫停服務且不視為違約，增加乙方可用停服務施壓的空間
+v4,12.4,inserted,adverse,medium,RISK_DATA_CONTROL_LOST,協議終止後乙方可自行決定是否保留操作紀錄與備份資料，降低甲方對資料處置的掌握
+v4,13.3,inserted,adverse,medium,RISK_FORCE_MAJEURE_EXPANDED,將第三方平台、供應商、委外商的問題也視為不可抗力，擴大乙方可主張免責的範圍
+v4,14.3,modified,adverse,medium,RISK_JURISDICTION_CHANGED,管轄法院改為乙方所在地地院，對甲方訴訟地點較不利
+v3,8.5,inserted,favorable,medium,RISK_PROTECTION_ADDED,新增資安事件通報義務（2 小時通知、24 小時初報），提升事件透明度與控管
+v3,10.2,modified,favorable,high,RISK_PENALTY_WEAKENED,可用率低於 99.7% 即給予 10% 折讓，比 v1 的 99.5% / 5% 對甲方更有保障
+v3,10.3,modified,favorable,medium,RISK_PENALTY_WEAKENED,連續未達標門檻提高到 99.7%，且可暫停支付未到期款，有利甲方施壓改善
+v3,10.5,inserted,favorable,high,RISK_LIABILITY_INCREASE,若資安、保密或重大中斷導致第三人求償或裁罰，乙方負完全賠償責任
+v3,10.6,inserted,favorable,medium,RISK_LIABILITY_INCREASE,明定賠償包含訴訟費、律師費、罰鍰等，擴大可請求範圍
+v3,11.1,modified,favorable,medium,RISK_LIABILITY_CAP_CHANGED,賠償上限從最近 12 個月服務費，提升為最近 24 個月服務費之 2 倍
+v3,11.2,modified,favorable,medium,RISK_LIABILITY_CAP_CHANGED,明確排除保密、資安、個資外洩等情形不適用責任上限，擴大乙方責任
+v3,11.3,modified,favorable,medium,RISK_LIABILITY_CAP_CHANGED,雖維持一般免除間接損害，但對違反 8 條或 10.5 條者不適用免責
+v2,4.1,modified,adverse,medium,RISK_SLA_DEGRADE,可用率從 99.9% 降為 99.5%，系統可允許更多停機時間，服務品質門檻下降
+v2,5.2,modified,adverse,high,RISK_RESPONSE_TIME_EXTENDED,P1 初始回應由 30 分鐘放寬為 2 小時，重大故障時乙方可更晚開始處理
+v2,5.2,modified,adverse,medium,RISK_RESPONSE_TIME_EXTENDED,P2 初始回應由 2 小時放寬為 4 小時，重要功能異常處理變慢
+v2,5.2,modified,adverse,low,RISK_RESPONSE_TIME_EXTENDED,P3 初始回應由 1 個工作日放寬為 2 個工作日，影響相對較小
+v2,5.3,modified,adverse,high,RISK_RESPONSE_TIME_EXTENDED,P1 修復目標時間由 4 小時延長為 8 小時，重大故障容忍時間加倍
+v2,5.3,modified,adverse,medium,RISK_RESPONSE_TIME_EXTENDED,P2 修復由 8 小時改為 2 個工作日，重要問題可能拖延到多日
+v2,5.3,modified,adverse,low,RISK_RESPONSE_TIME_EXTENDED,P3 修復由 3 個工作日改為 5 個工作日，一般問題可被延後處理
+v2,6.1,modified,adverse,low,RISK_RESPONSE_TIME_EXTENDED,維護預告由 3 個工作日前縮短為 1 個工作日前，甲方準備時間變少
+v2,9.1,modified,adverse,low,RISK_RESPONSE_TIME_EXTENDED,報告提交期限由 5 個工作日延長為 10 個工作日，信息回饋變慢
+v2,10.2,modified,adverse,medium,RISK_PENALTY_WEAKENED,折讓條件放寬（門檻從 99.5% → 99.0%，折讓比例從 5% → 2%），實際賠償減少
+v2,10.3,modified,adverse,medium,RISK_PENALTY_WEAKENED,連續未達標門檻由 99.5% 降至 99.0%，甲方較難觸發改善與談判機會
+v5,6.4,inserted,favorable,medium,none,甲方可要求停止、延後或調整維護/變更，乙方不得拒絕，加強甲方對變更時機的控制
+v5,7.6,inserted,favorable,medium,none,甲方得要求更換服務人員，乙方需於 3 個工作日內完成，增加甲方對服務團隊的人員控制
+v5,12.2,modified,favorable,high,RISK_TERMINATION_CHANGED,甲方可於任何時間以 15 日通知無條件終止協議，強化單方解約權
+v5,12.3,inserted,favorable,medium,RISK_TERMINATION_CHANGED,若甲方認為服務品質或風險控管未達期待，可要求限期改善，未改善可立即終止
+v5,12.4,inserted,favorable,high,RISK_TERMINATION_CHANGED,乙方不得逕行提前終止協議，除非經甲方書面同意，大幅限制乙方解約自由
+v5,12.5,inserted,favorable,high,RISK_TERMINATION_CHANGED,終止或屆滿時，乙方需於 5 日內完成交接與資料返還，不得主張留置或延遲，確保移轉與資料控制
+v5,6.3 / 12.6,modified,favorable,medium,none,終止後資料返還與刪除義務維持，搭配更強的交接時程，減少鎖死風險
