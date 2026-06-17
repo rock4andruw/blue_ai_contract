@@ -1,0 +1,698 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Blue-AI 合約智能比對助理</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --blue: #1a56db;
+      --blue-light: #ebf0ff;
+      --red: #e02424;
+      --red-light: #fde8e8;
+      --yellow: #c27803;
+      --yellow-light: #fdf6b2;
+      --green: #057a55;
+      --green-light: #def7ec;
+      --gray: #6b7280;
+      --gray-light: #f3f4f6;
+      --border: #e5e7eb;
+      --radius: 10px;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      background: #f8faff;
+      color: #111827;
+      min-height: 100vh;
+    }
+
+    /* ── Header ── */
+    header {
+      background: linear-gradient(135deg, #1e3a8a 0%, #1a56db 100%);
+      color: #fff;
+      padding: 18px 32px;
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      box-shadow: 0 2px 8px rgba(0,0,0,.18);
+    }
+    header .logo { font-size: 26px; }
+    header h1 { font-size: 20px; font-weight: 700; letter-spacing: .3px; }
+    header p { font-size: 13px; opacity: .8; margin-top: 2px; }
+
+    /* ── Layout ── */
+    .container { max-width: 960px; margin: 0 auto; padding: 28px 20px 60px; }
+
+    /* ── Card ── */
+    .card {
+      background: #fff;
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 24px 28px;
+      margin-bottom: 20px;
+      box-shadow: 0 1px 4px rgba(0,0,0,.06);
+    }
+    .card-title {
+      font-size: 15px;
+      font-weight: 700;
+      color: #1e3a8a;
+      margin-bottom: 16px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    /* ── Tabs ── */
+    .tabs { display: flex; gap: 0; margin-bottom: 20px; border-bottom: 2px solid var(--border); }
+    .tab {
+      padding: 10px 22px;
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+      border: none;
+      background: none;
+      color: var(--gray);
+      border-bottom: 2px solid transparent;
+      margin-bottom: -2px;
+      transition: all .15s;
+    }
+    .tab.active { color: var(--blue); border-bottom-color: var(--blue); }
+    .tab:hover:not(.active) { color: #374151; }
+
+    .tab-panel { display: none; }
+    .tab-panel.active { display: block; }
+
+    /* ── Upload zone ── */
+    .upload-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+    .upload-box {
+      border: 2px dashed var(--border);
+      border-radius: 8px;
+      padding: 20px 16px;
+      text-align: center;
+      cursor: pointer;
+      transition: all .2s;
+    }
+    .upload-box:hover, .upload-box.dragover { border-color: var(--blue); background: var(--blue-light); }
+    .upload-box input[type=file] { display: none; }
+    .upload-box .icon { font-size: 28px; margin-bottom: 6px; }
+    .upload-box .label { font-size: 13px; color: var(--gray); }
+    .upload-box .filename {
+      margin-top: 8px;
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--blue);
+      word-break: break-all;
+    }
+
+    /* ── Example buttons ── */
+    .example-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; }
+    .example-btn {
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 12px 10px;
+      text-align: center;
+      cursor: pointer;
+      background: #fff;
+      transition: all .15s;
+      font-size: 13px;
+    }
+    .example-btn:hover { border-color: var(--blue); background: var(--blue-light); }
+    .example-btn .badge {
+      display: inline-block;
+      font-size: 11px;
+      font-weight: 700;
+      padding: 2px 7px;
+      border-radius: 12px;
+      margin-bottom: 5px;
+    }
+    .badge-red { background: var(--red-light); color: var(--red); }
+    .badge-yellow { background: var(--yellow-light); color: var(--yellow); }
+    .example-btn .desc { font-size: 12px; color: var(--gray); margin-top: 2px; }
+
+    /* ── Sections count ── */
+    .sections-row {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-top: 16px;
+      font-size: 13px;
+      color: var(--gray);
+    }
+    .sections-row input[type=range] { width: 120px; }
+    .sections-row span { font-weight: 600; color: #111; min-width: 16px; }
+
+    /* ── Submit button ── */
+    .btn-primary {
+      display: block;
+      width: 100%;
+      margin-top: 20px;
+      padding: 13px;
+      background: linear-gradient(135deg, #1e3a8a, #1a56db);
+      color: #fff;
+      font-size: 15px;
+      font-weight: 700;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+      transition: opacity .15s;
+    }
+    .btn-primary:hover { opacity: .9; }
+    .btn-primary:disabled { opacity: .5; cursor: not-allowed; }
+
+    /* ── Loading ── */
+    #loading {
+      display: none;
+      text-align: center;
+      padding: 40px;
+      color: var(--gray);
+    }
+    .spinner {
+      width: 36px; height: 36px;
+      border: 4px solid var(--border);
+      border-top-color: var(--blue);
+      border-radius: 50%;
+      animation: spin .8s linear infinite;
+      margin: 0 auto 14px;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* ── Results ── */
+    #results { display: none; }
+
+    .summary-bar {
+      display: flex;
+      gap: 14px;
+      flex-wrap: wrap;
+      margin-bottom: 20px;
+    }
+    .stat-box {
+      flex: 1;
+      min-width: 120px;
+      background: #fff;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 14px 16px;
+      text-align: center;
+    }
+    .stat-box .num { font-size: 28px; font-weight: 800; }
+    .stat-box .lbl { font-size: 12px; color: var(--gray); margin-top: 2px; }
+    .stat-red .num { color: var(--red); }
+    .stat-yellow .num { color: var(--yellow); }
+    .stat-blue .num { color: var(--blue); }
+
+    /* verdict banner */
+    .verdict {
+      border-radius: 8px;
+      padding: 14px 18px;
+      font-size: 15px;
+      font-weight: 700;
+      margin-bottom: 20px;
+    }
+    .verdict-high { background: var(--red-light); color: var(--red); }
+    .verdict-medium { background: var(--yellow-light); color: var(--yellow); }
+    .verdict-low, .verdict-none { background: var(--green-light); color: var(--green); }
+
+    /* key changes */
+    .change-item {
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      margin-bottom: 12px;
+      overflow: hidden;
+    }
+    .change-header {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 12px 16px;
+      cursor: pointer;
+      background: #fafafa;
+      user-select: none;
+    }
+    .change-header:hover { background: #f3f4f6; }
+    .change-rank {
+      width: 24px; height: 24px;
+      border-radius: 50%;
+      background: var(--blue);
+      color: #fff;
+      font-size: 12px;
+      font-weight: 700;
+      display: flex; align-items: center; justify-content: center;
+      flex-shrink: 0;
+    }
+    .risk-badge {
+      font-size: 11px;
+      font-weight: 700;
+      padding: 2px 8px;
+      border-radius: 10px;
+      flex-shrink: 0;
+    }
+    .risk-high { background: var(--red-light); color: var(--red); }
+    .risk-medium { background: var(--yellow-light); color: var(--yellow); }
+    .risk-low { background: var(--green-light); color: var(--green); }
+    .change-title { font-size: 13px; font-weight: 600; flex: 1; }
+    .change-clause { font-size: 12px; color: var(--gray); }
+    .chevron { font-size: 12px; color: var(--gray); transition: transform .2s; }
+    .chevron.open { transform: rotate(180deg); }
+
+    .change-body {
+      padding: 16px;
+      border-top: 1px solid var(--border);
+      display: none;
+      font-size: 13px;
+      line-height: 1.6;
+    }
+    .change-body.open { display: block; }
+    .change-body .field-label { font-weight: 700; color: #374151; margin-top: 10px; margin-bottom: 3px; }
+    .change-body .field-label:first-child { margin-top: 0; }
+    .options-list { list-style: none; padding: 0; }
+    .options-list li {
+      padding: 6px 10px;
+      background: var(--blue-light);
+      border-radius: 6px;
+      margin-bottom: 5px;
+      font-size: 12.5px;
+    }
+    .options-list li::before { content: "→ "; color: var(--blue); font-weight: 700; }
+
+    /* risk flags table */
+    .risk-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+    .risk-table th {
+      text-align: left;
+      padding: 8px 10px;
+      background: var(--gray-light);
+      font-size: 12px;
+      color: var(--gray);
+      font-weight: 600;
+    }
+    .risk-table td { padding: 8px 10px; border-bottom: 1px solid var(--border); vertical-align: top; }
+    .risk-table tr:last-child td { border-bottom: none; }
+
+    /* review advice */
+    .advice-row {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+    .advice-chip {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      padding: 6px 12px;
+      border-radius: 20px;
+      font-size: 12px;
+      font-weight: 600;
+    }
+    .chip-must { background: var(--red-light); color: var(--red); }
+    .chip-suggest { background: var(--yellow-light); color: var(--yellow); }
+    .chip-ok { background: var(--green-light); color: var(--green); }
+
+    /* markdown report download */
+    .btn-dl {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 8px 16px;
+      background: var(--gray-light);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+      text-decoration: none;
+      color: #374151;
+      transition: background .15s;
+    }
+    .btn-dl:hover { background: var(--border); }
+
+    /* meta info */
+    .meta { font-size: 12px; color: var(--gray); margin-bottom: 16px; }
+    .mode-badge {
+      display: inline-block;
+      font-size: 11px;
+      padding: 2px 7px;
+      border-radius: 10px;
+      background: var(--blue-light);
+      color: var(--blue);
+      font-weight: 600;
+    }
+
+    /* error */
+    #error-box {
+      display: none;
+      background: var(--red-light);
+      color: var(--red);
+      border-radius: 8px;
+      padding: 14px 18px;
+      margin-bottom: 20px;
+      font-size: 14px;
+    }
+  </style>
+</head>
+<body>
+
+<header>
+  <div class="logo">📋</div>
+  <div>
+    <h1>Blue-AI 合約智能比對助理</h1>
+    <p>像有一個資深法務顧問幫你審合約</p>
+  </div>
+</header>
+
+<div class="container">
+
+  <!-- Input card -->
+  <div class="card">
+    <div class="card-title">⚖️ 合約比對</div>
+
+    <div class="tabs">
+      <button class="tab active" onclick="switchTab('upload')">上傳合約</button>
+      <button class="tab" onclick="switchTab('example')">範例模式</button>
+    </div>
+
+    <!-- Upload tab -->
+    <div id="tab-upload" class="tab-panel active">
+      <div class="upload-grid">
+        <div>
+          <div style="font-size:12px;font-weight:600;color:#374151;margin-bottom:8px;">原始合約（甲方版本）</div>
+          <div class="upload-box" id="drop-orig" onclick="document.getElementById('file-orig').click()">
+            <input type="file" id="file-orig" accept=".pdf,.docx,.md,.txt" onchange="onFileSelected('orig', this)">
+            <div class="icon">📄</div>
+            <div class="label">點擊或拖曳上傳<br>PDF / DOCX / MD</div>
+            <div class="filename" id="fname-orig"></div>
+          </div>
+        </div>
+        <div>
+          <div style="font-size:12px;font-weight:600;color:#374151;margin-bottom:8px;">修訂合約（供應商版本）</div>
+          <div class="upload-box" id="drop-rev" onclick="document.getElementById('file-rev').click()">
+            <input type="file" id="file-rev" accept=".pdf,.docx,.md,.txt" onchange="onFileSelected('rev', this)">
+            <div class="icon">📝</div>
+            <div class="label">點擊或拖曳上傳<br>PDF / DOCX / MD</div>
+            <div class="filename" id="fname-rev"></div>
+          </div>
+        </div>
+      </div>
+      <div class="sections-row">
+        顯示主要變更數：
+        <input type="range" id="slider-upload" min="1" max="10" value="5"
+               oninput="document.getElementById('slider-val-upload').textContent=this.value">
+        <span id="slider-val-upload">5</span> 個
+      </div>
+      <button class="btn-primary" id="btn-upload" onclick="runUpload()" disabled>開始比對</button>
+    </div>
+
+    <!-- Example tab -->
+    <div id="tab-example" class="tab-panel">
+      <div style="font-size:13px;color:var(--gray);margin-bottom:14px;">
+        以「SLA-like Base Contract v1」為基準，選擇修訂版本：
+      </div>
+      <div class="example-grid">
+        <div class="example-btn" onclick="runExample('v2')">
+          <div class="badge badge-red">高風險</div>
+          <div style="font-weight:700;">v2 服務降級</div>
+          <div class="desc">SLA 可用率放寬<br>回應時間拉長</div>
+        </div>
+        <div class="example-btn" onclick="runExample('v3')">
+          <div class="badge badge-red">高風險</div>
+          <div style="font-weight:700;">v3 責任加重</div>
+          <div class="desc">賠償上限縮水<br>責任條款不利</div>
+        </div>
+        <div class="example-btn" onclick="runExample('v4')">
+          <div class="badge badge-red">高風險</div>
+          <div style="font-weight:700;">v4 保護刪減</div>
+          <div class="desc">保護條款消失<br>免責範圍擴大</div>
+        </div>
+        <div class="example-btn" onclick="runExample('v5')">
+          <div class="badge badge-yellow">中風險</div>
+          <div style="font-weight:700;">v5 終止偏甲方</div>
+          <div class="desc">終止條件改變<br>通知期調整</div>
+        </div>
+      </div>
+      <div class="sections-row">
+        顯示主要變更數：
+        <input type="range" id="slider-example" min="1" max="10" value="5"
+               oninput="document.getElementById('slider-val-example').textContent=this.value">
+        <span id="slider-val-example">5</span> 個
+      </div>
+    </div>
+  </div>
+
+  <!-- Loading -->
+  <div id="loading">
+    <div class="spinner"></div>
+    <div>分析中，請稍候…</div>
+  </div>
+
+  <!-- Error -->
+  <div id="error-box"></div>
+
+  <!-- Results -->
+  <div id="results">
+
+    <!-- Meta -->
+    <div class="meta" id="result-meta"></div>
+
+    <!-- Verdict -->
+    <div class="verdict" id="result-verdict"></div>
+
+    <!-- Stats -->
+    <div class="summary-bar" id="result-stats"></div>
+
+    <!-- Key changes -->
+    <div class="card">
+      <div class="card-title">🔍 主要變更重點</div>
+      <div id="result-changes"></div>
+    </div>
+
+    <!-- Review advice -->
+    <div class="card">
+      <div class="card-title">📋 審閱建議</div>
+      <div class="advice-row" id="result-advice"></div>
+    </div>
+
+    <!-- Risk flags table -->
+    <div class="card">
+      <div class="card-title">🚩 完整風險旗標</div>
+      <div style="overflow-x:auto;">
+        <table class="risk-table">
+          <thead>
+            <tr>
+              <th>條款</th>
+              <th>風險等級</th>
+              <th>風險類型</th>
+              <th>觸發原因</th>
+            </tr>
+          </thead>
+          <tbody id="result-flags"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- Download -->
+    <div style="text-align:right;margin-top:-8px;">
+      <a class="btn-dl" id="btn-download" href="#" download="contract_report.md">
+        ⬇ 下載完整報告 (.md)
+      </a>
+    </div>
+
+  </div><!-- /results -->
+
+</div><!-- /container -->
+
+<script>
+  const API = 'http://localhost:8000';
+
+  // ── Tab switch ────────────────────────────────────────────────────────────
+  function switchTab(t) {
+    document.querySelectorAll('.tab').forEach((el, i) => {
+      el.classList.toggle('active', (i === 0 && t === 'upload') || (i === 1 && t === 'example'));
+    });
+    document.getElementById('tab-upload').classList.toggle('active', t === 'upload');
+    document.getElementById('tab-example').classList.toggle('active', t === 'example');
+  }
+
+  // ── File upload ───────────────────────────────────────────────────────────
+  function onFileSelected(side, input) {
+    const name = input.files[0]?.name || '';
+    document.getElementById(`fname-${side}`).textContent = name;
+    const orig = document.getElementById('file-orig').files.length;
+    const rev  = document.getElementById('file-rev').files.length;
+    document.getElementById('btn-upload').disabled = !(orig && rev);
+  }
+
+  // drag & drop
+  ['orig','rev'].forEach(side => {
+    const box = document.getElementById(`drop-${side}`);
+    box.addEventListener('dragover', e => { e.preventDefault(); box.classList.add('dragover'); });
+    box.addEventListener('dragleave', () => box.classList.remove('dragover'));
+    box.addEventListener('drop', e => {
+      e.preventDefault();
+      box.classList.remove('dragover');
+      const file = e.dataTransfer.files[0];
+      if (!file) return;
+      const input = document.getElementById(`file-${side}`);
+      const dt = new DataTransfer();
+      dt.items.add(file);
+      input.files = dt.files;
+      onFileSelected(side, input);
+    });
+  });
+
+  // ── API calls ─────────────────────────────────────────────────────────────
+  async function runUpload() {
+    const orig = document.getElementById('file-orig').files[0];
+    const rev  = document.getElementById('file-rev').files[0];
+    const n    = document.getElementById('slider-upload').value;
+    const form = new FormData();
+    form.append('original_file', orig);
+    form.append('revised_file', rev);
+    form.append('max_sections', n);
+    showLoading();
+    try {
+      const res = await fetch(`${API}/api/v1/contracts/compare`, { method: 'POST', body: form });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.detail || '比對失敗');
+      renderResults(data);
+    } catch(e) { showError(e.message); }
+  }
+
+  async function runExample(id) {
+    const n = document.getElementById('slider-example').value;
+    showLoading();
+    try {
+      const res = await fetch(`${API}/api/v1/contracts/compare/example/${id}?max_sections=${n}`);
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.detail || '比對失敗');
+      renderResults(data);
+    } catch(e) { showError(e.message); }
+  }
+
+  // ── UI helpers ────────────────────────────────────────────────────────────
+  function showLoading() {
+    document.getElementById('loading').style.display = 'block';
+    document.getElementById('results').style.display = 'none';
+    document.getElementById('error-box').style.display = 'none';
+  }
+
+  function showError(msg) {
+    document.getElementById('loading').style.display = 'none';
+    const box = document.getElementById('error-box');
+    box.textContent = '⚠ ' + msg + '（請確認後端服務已啟動：uvicorn src.api.main:app --port 8000）';
+    box.style.display = 'block';
+  }
+
+  const LEVEL_EMOJI = { high: '🔴', medium: '🟡', low: '🟢', none: '⚪' };
+  const LEVEL_ZH    = { high: '高風險', medium: '中風險', low: '低風險', none: '無風險' };
+  const RISK_CLASS  = { high: 'risk-high', medium: 'risk-medium', low: 'risk-low' };
+  const VERDICT_CLASS = { high: 'verdict-high', medium: 'verdict-medium', low: 'verdict-low', none: 'verdict-none' };
+
+  function renderResults(d) {
+    document.getElementById('loading').style.display = 'none';
+    document.getElementById('results').style.display = 'block';
+
+    // meta
+    const modeLabel = d.summary_mode === 'claude_api'
+      ? '<span class="mode-badge">Claude API</span>'
+      : '<span class="mode-badge">範本模式</span>';
+    document.getElementById('result-meta').innerHTML =
+      `原始：<strong>${d.original_filename}</strong> &nbsp;→&nbsp; 修訂：<strong>${d.revised_filename}</strong>
+       &nbsp;｜&nbsp; ${d.compare_date} &nbsp;｜&nbsp; 處理時間 ${d.processing_time_ms}ms &nbsp;｜&nbsp; ${modeLabel}`;
+
+    // verdict
+    const vEl = document.getElementById('result-verdict');
+    const vEmoji = LEVEL_EMOJI[d.overall_risk_level] || '';
+    const vZh    = LEVEL_ZH[d.overall_risk_level] || '';
+    const vClass = VERDICT_CLASS[d.overall_risk_level] || 'verdict-none';
+    vEl.className = `verdict ${vClass}`;
+    vEl.textContent = `${vEmoji} 整體評估：${vZh}`;
+
+    // stats
+    document.getElementById('result-stats').innerHTML = `
+      <div class="stat-box stat-blue"><div class="num">${d.total_changes}</div><div class="lbl">總變動條款</div></div>
+      <div class="stat-box stat-red"><div class="num">${d.high_risk_count}</div><div class="lbl">高風險</div></div>
+      <div class="stat-box stat-yellow"><div class="num">${d.medium_risk_count}</div><div class="lbl">中風險</div></div>
+      <div class="stat-box"><div class="num">${d.low_risk_count}</div><div class="lbl">低風險</div></div>
+    `;
+
+    // key changes
+    const changesEl = document.getElementById('result-changes');
+    if (!d.key_changes.length) {
+      changesEl.innerHTML = '<p style="color:var(--gray);font-size:13px;">未偵測到顯著風險條款。</p>';
+    } else {
+      changesEl.innerHTML = d.key_changes.map((c, i) => `
+        <div class="change-item">
+          <div class="change-header" onclick="toggleChange(${i})">
+            <div class="change-rank">${c.rank}</div>
+            <span class="risk-badge ${RISK_CLASS[c.risk_level] || ''}">${LEVEL_EMOJI[c.risk_level]} ${LEVEL_ZH[c.risk_level]}</span>
+            <span class="change-title">${escHtml(c.risk_name)}</span>
+            <span class="change-clause">第 ${escHtml(c.clause_id)} 條</span>
+            <span class="chevron" id="chev-${i}">▼</span>
+          </div>
+          <div class="change-body" id="body-${i}">
+            <div class="field-label">說明</div>
+            <div>${escHtml(c.plain_summary)}</div>
+            <div class="field-label">商業影響</div>
+            <div>${escHtml(c.business_impact)}</div>
+            <div class="field-label">協商對策</div>
+            <ul class="options-list">
+              ${c.negotiation_options.map(o => `<li>${escHtml(o)}</li>`).join('')}
+            </ul>
+          </div>
+        </div>
+      `).join('');
+      // auto-open first item
+      toggleChange(0);
+    }
+
+    // review advice
+    const advEl = document.getElementById('result-advice');
+    let advHtml = '';
+    if (d.review_advice.must_negotiate.length) {
+      advHtml += `<div class="advice-chip chip-must">🔴 必須協商：第 ${d.review_advice.must_negotiate.join('、')} 條</div>`;
+    }
+    if (d.review_advice.suggested_negotiate.length) {
+      advHtml += `<div class="advice-chip chip-suggest">🟡 建議協商：第 ${d.review_advice.suggested_negotiate.join('、')} 條</div>`;
+    }
+    if (d.review_advice.acceptable_count > 0) {
+      advHtml += `<div class="advice-chip chip-ok">🟢 可接受：其他 ${d.review_advice.acceptable_count} 處行政性變更</div>`;
+    }
+    advEl.innerHTML = advHtml || '<span style="color:var(--gray);font-size:13px;">無需特別協商。</span>';
+
+    // risk flags table
+    document.getElementById('result-flags').innerHTML = d.all_risk_flags.map(f => `
+      <tr>
+        <td><strong>${escHtml(f.clause_id)}</strong></td>
+        <td><span class="risk-badge ${RISK_CLASS[f.risk_level] || ''}">${LEVEL_EMOJI[f.risk_level]} ${LEVEL_ZH[f.risk_level]}</span></td>
+        <td>${escHtml(f.risk_name)}</td>
+        <td style="color:var(--gray)">${escHtml(f.trigger_reason)}</td>
+      </tr>
+    `).join('');
+
+    // download markdown
+    const blob = new Blob([d.markdown_report], { type: 'text/markdown' });
+    const url  = URL.createObjectURL(blob);
+    const dl   = document.getElementById('btn-download');
+    dl.href = url;
+    dl.download = `contract_report_${d.compare_date}.md`;
+
+    window.scrollTo({ top: document.getElementById('results').offsetTop - 20, behavior: 'smooth' });
+  }
+
+  function toggleChange(i) {
+    const body = document.getElementById(`body-${i}`);
+    const chev = document.getElementById(`chev-${i}`);
+    body.classList.toggle('open');
+    chev.classList.toggle('open');
+  }
+
+  function escHtml(str) {
+    if (!str) return '';
+    return String(str)
+      .replace(/&/g,'&amp;').replace(/</g,'&lt;')
+      .replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+  }
+</script>
+</body>
+</html>
