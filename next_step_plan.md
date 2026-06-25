@@ -1,8 +1,8 @@
 # 下一步規劃（2026-06-25 更新）
 
-**競賽截止**：2026 年 8 月初  
-**評審組成**：AI / AP / Infra 部長 + 黑客松評審  
-**當前狀態**：Phase 1 完整完成，正在 Phase 1.5
+**競賽截止**：2026 年 8 月初
+**評審組成**：AI / AP / Infra 部長 + 黑客松評審
+**當前狀態**：Phase 1 完整完成，Phase 1.5 MAS 規劃確定、待實作
 
 ---
 
@@ -21,28 +21,76 @@
 
 ---
 
+## Phase 1.5 MAS 設計規格
+
+### 架構
+
+Rule Engine 完全不動。MAS 只加在 LLM 解釋層：
+
+```text
+[高風險 flag] → async parallel → Agent A + Agent B → Judge → mas_status + mas_confidence
+```
+
+### Agent Persona（防同質化關鍵）
+
+**Agent A（嚴格）**：極度保守的買方法律顧問，任務是找出所有隱藏惡意條款與最壞情況（Worst-case scenario）
+
+**Agent B（平衡）**：促成交易的商務法務調解人，評估條款是否符合業界慣例（Market standard）及拒絕是否導致交易破裂
+
+### Judge 決策矩陣
+
+| Rule Engine | Agent A | Agent B | mas_status | 最終風險級別 |
+| --- | --- | --- | --- | --- |
+| High | High | High | `confirmed` | High |
+| High | High | Medium/Low | `pending` | High（待確認） |
+| High | Medium | High | `pending` | High（待確認） |
+| High | Medium | Medium | `confirmed`（降級） | Medium |
+| High | Low | Low | `confirmed`（降級） | Low |
+
+### Graceful Degradation
+
+- `asyncio.wait_for` 每個 Agent 超時設定 4 秒
+- 任一 Agent 失敗 → 退級為 `mas_status: "single_agent"`，`mas_confidence: "low"`
+- 兩個都失敗 → fallback 到 template，API 不中斷
+
+### UI 呈現
+
+- `confirmed` → `✓ 雙重驗證` 標籤
+- `pending` → `⚠ 待確認` 標籤 + **展示兩者觀點衝突點**（例：「嚴格審查員認為...；平衡審查員指出...」）
+- `single_agent` → 不顯示 MAS 標籤，靜默降級
+
+### 驗收條件
+
+- gold set 跑完後 Pending 率目標：**10%–20%**
+- 低於 5% → Agent persona 差異不夠，需調整 prompt
+- 超過 30% → 使用者負擔過重，需放寬 Judge 邏輯
+
+---
+
 ## 近期工作（7 月）
 
 ### 週次 1（6/30 前）
 
-- [ ] Phase 1.5 MAS：雙 Agent 交叉驗證高風險條款
-  - Agent A（嚴格判定）+ Agent B（寬鬆判定）→ 取交集為確定風險，差異為 Pending
-  - 目標：AI 部長的技術亮點，強化「防幻覺」敘事
-  - 實作方式：async parallel 呼叫，同一 API key
+- [ ] MAS 實作：Agent A/B prompt persona + asyncio.gather + Judge 邏輯
+- [ ] Graceful Degradation：超時退級 + fallback 機制
+- [ ] API 新增 `mas_status` / `mas_confidence` 欄位
+- [ ] UI：雙重驗證標籤 + Pending 衝突點展示
 
 ### 週次 2（7/7 前）
 
+- [ ] gold set 跑分：驗證 Pending 率在 10–20% 區間
 - [ ] DOCX 格式支援改善（考慮 markitdown / mammoth）
 - [ ] 邊界測試：空條款、超長條款、純表格條款
 
 ### 週次 3（7/14 前）
 
+- [ ] 法務合約測試（NDA + IT 採購，甲方版 vs 乙方修改版）
 - [ ] Demo 壓測（確保當天服務穩定不崩）
 - [ ] 針對三位部長各自的 30 秒切入點準備說詞
 
 ### 週次 4-5（7/21-7/28）
 
-- [ ] 簡報製作（含架構圖更新）
+- [ ] 簡報製作（含 MAS 架構圖）
 - [ ] Demo 流程預演 + 修 Bug
 - [ ] README 補齊啟動說明
 
