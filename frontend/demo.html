@@ -1228,7 +1228,7 @@
     btn.textContent = '⏳ 分析中…';
 
     try {
-      const res = await fetch(`${API_BASE}/api/v1/contracts/negotiate`, {
+      const res = await fetch(`${API}/api/v1/contracts/negotiate`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
