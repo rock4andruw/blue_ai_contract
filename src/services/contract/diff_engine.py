@@ -1,8 +1,18 @@
 """Diff engine: converts alignment MatchBlocks into structured DiffItems."""
 
+import difflib
 from typing import List
 from .schemas import DiffItem, MatchBlock
 from .parser import ClauseElement
+
+_SIMILARITY_THRESHOLD = 0.75
+
+
+def _text_similarity(a: str, b: str) -> float:
+    """Character-level similarity using difflib SequenceMatcher."""
+    if not a or not b:
+        return 0.0
+    return difflib.SequenceMatcher(None, a, b).ratio()
 
 
 class DiffEngine:
@@ -56,4 +66,49 @@ class DiffEngine:
                         match_method=block.method,
                     ))
 
-        return diffs
+        return self._merge_renumbered(diffs)
+
+    def _merge_renumbered(self, diffs: List[DiffItem]) -> List[DiffItem]:
+        """Post-process: merge inserted+deleted pairs with high text similarity.
+
+        Handles clauses that were renumbered (e.g. 12.5 → 12.6) but have
+        nearly identical content. Needleman-Wunsch treats these as separate
+        deleted and inserted items; similarity check reclassifies them as modified.
+        """
+        deleted  = [d for d in diffs if d.change_type == "deleted"]
+        inserted = [d for d in diffs if d.change_type == "inserted"]
+        others   = [d for d in diffs if d.change_type == "modified"]
+
+        merged_old_ids = set()
+        merged_new_ids = set()
+        merged: List[DiffItem] = []
+
+        for ins in inserted:
+            best_score = 0.0
+            best_del = None
+            for dele in deleted:
+                if dele.clause_id in merged_old_ids:
+                    continue
+                score = _text_similarity(dele.old_text, ins.new_text)
+                if score > best_score:
+                    best_score = score
+                    best_del = dele
+
+            if best_del is not None and best_score >= _SIMILARITY_THRESHOLD:
+                # Reclassify as modified (renumbered clause)
+                clause_id = f"{best_del.clause_id}→{ins.clause_id}"
+                merged.append(DiffItem(
+                    clause_id=clause_id,
+                    change_type="modified",
+                    old_text=best_del.old_text,
+                    new_text=ins.new_text,
+                    confidence=best_score,
+                    match_method="similarity_merge",
+                ))
+                merged_old_ids.add(best_del.clause_id)
+                merged_new_ids.add(ins.clause_id)
+
+        remaining_deleted  = [d for d in deleted  if d.clause_id not in merged_old_ids]
+        remaining_inserted = [d for d in inserted if d.clause_id not in merged_new_ids]
+
+        return others + merged + remaining_deleted + remaining_inserted
