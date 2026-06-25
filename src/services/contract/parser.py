@@ -54,8 +54,22 @@ class ContractParser:
     # MD parser (primary for demo)
     # ------------------------------------------------------------------
 
+    @staticmethod
+    def _strip_track_changes(text: str) -> str:
+        """Remove Word/HTML track-change markup from text.
+
+        <del ...>...</del>  → removed (deleted content)
+        <ins ...>...</ins>  → inner text kept (accepted insertion)
+        Any remaining HTML tags → stripped
+        """
+        text = re.sub(r'<del[^>]*>.*?</del>', '', text, flags=re.DOTALL | re.IGNORECASE)
+        text = re.sub(r'<ins[^>]*>(.*?)</ins>', r'\1', text, flags=re.DOTALL | re.IGNORECASE)
+        text = re.sub(r'<[^>]+>', '', text)
+        return text
+
     def _parse_md(self, file_path: str) -> ContractDocument:
-        text = Path(file_path).read_text(encoding="utf-8")
+        raw = Path(file_path).read_text(encoding="utf-8")
+        text = self._strip_track_changes(raw)
         clauses = self._split_md_clauses(text)
         return ContractDocument(
             filename=Path(file_path).name,
