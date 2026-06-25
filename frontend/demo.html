@@ -600,9 +600,13 @@
       background: var(--ink);
       border-bottom: 1px solid rgba(255,255,255,.08);
       display: flex;
+      flex-direction: column;
+      align-items: stretch;
+    }
+    .hero-metrics-row {
+      display: flex;
       justify-content: center;
       align-items: stretch;
-      gap: 0;
     }
     .hero-metric {
       display: flex;
@@ -610,7 +614,16 @@
       gap: 14px;
       padding: 16px 48px;
       color: #fff;
+      cursor: pointer;
+      position: relative;
+      transition: background .15s;
+      border: none;
+      background: transparent;
+      text-align: left;
+      font-family: inherit;
     }
+    .hero-metric:hover { background: rgba(255,255,255,.04); }
+    .hero-metric.active { background: rgba(255,255,255,.06); }
     .hero-num {
       font-family: 'EB Garamond', Georgia, serif;
       font-size: 38px;
@@ -621,12 +634,33 @@
     }
     .hero-unit { font-size: 20px; margin-left: 2px; }
     .hero-desc { font-size: 12px; line-height: 1.55; opacity: .85; }
+    .hero-label { font-weight: 600; font-size: 12.5px; }
     .hero-sub  { opacity: .55; font-size: 11px; }
+    .hero-chevron {
+      font-size: 9px;
+      opacity: .4;
+      margin-left: 4px;
+      transition: transform .2s;
+      display: inline-block;
+    }
+    .hero-metric.active .hero-chevron { transform: rotate(180deg); opacity: .7; }
     .hero-divider {
       width: 1px;
       background: rgba(255,255,255,.12);
       margin: 12px 0;
     }
+    .hero-detail {
+      display: none;
+      background: rgba(255,255,255,.05);
+      border-top: 1px solid rgba(255,255,255,.08);
+      padding: 14px 48px;
+      color: rgba(255,255,255,.75);
+      font-size: 12.5px;
+      line-height: 1.7;
+      animation: fadeIn .15s ease;
+    }
+    .hero-detail.open { display: block; }
+    @keyframes fadeIn { from { opacity: 0; transform: translateY(-4px); } to { opacity: 1; transform: none; } }
 
     /* ── Loading stages (horizontal stepper) ── */
     .loading-stages {
@@ -773,20 +807,40 @@
 </header>
 
 <!-- Hero strip -->
-<div class="hero-strip" aria-hidden="true">
-  <div class="hero-metric">
-    <span class="hero-num">26<span class="hero-unit">秒</span></span>
-    <div class="hero-desc">AI 初審完成<br><span class="hero-sub">vs 人工 92 分鐘 — LawGeex Study</span></div>
+<div class="hero-strip">
+  <div class="hero-metrics-row">
+    <button class="hero-metric" onclick="toggleHero(0)" id="hero-btn-0" aria-expanded="false">
+      <span class="hero-num">26<span class="hero-unit">秒</span></span>
+      <div class="hero-desc">
+        <div class="hero-label">完成合約初審 <span class="hero-chevron">▼</span></div>
+        <span class="hero-sub">人工平均需要 92 分鐘</span>
+      </div>
+    </button>
+    <div class="hero-divider"></div>
+    <button class="hero-metric" onclick="toggleHero(1)" id="hero-btn-1" aria-expanded="false">
+      <span class="hero-num">100<span class="hero-unit">%</span></span>
+      <div class="hero-desc">
+        <div class="hero-label">高風險零漏判 <span class="hero-chevron">▼</span></div>
+        <span class="hero-sub">38 筆人工驗證，零漏判</span>
+      </div>
+    </button>
+    <div class="hero-divider"></div>
+    <button class="hero-metric" onclick="toggleHero(2)" id="hero-btn-2" aria-expanded="false">
+      <span class="hero-num" style="font-size:28px;">雙重<br>把關</span>
+      <div class="hero-desc">
+        <div class="hero-label">規則引擎 + AI 各司其職 <span class="hero-chevron">▼</span></div>
+        <span class="hero-sub">不讓 AI 自己猜風險</span>
+      </div>
+    </button>
   </div>
-  <div class="hero-divider"></div>
-  <div class="hero-metric">
-    <span class="hero-num">100<span class="hero-unit">%</span></span>
-    <div class="hero-desc">高風險召回率<br><span class="hero-sub">38 筆 gold set 人工標註驗證</span></div>
+  <div class="hero-detail" id="hero-detail-0">
+    根據 LawGeex Study，人工審閱一份 NDA 平均需要 <strong style="color:#E8C96A;">92 分鐘</strong>。本系統完成差異比對、風險標記、摘要生成僅需 <strong style="color:#E8C96A;">26 秒</strong>，初審結果 30 分鐘內可完成人工確認。
   </div>
-  <div class="hero-divider"></div>
-  <div class="hero-metric">
-    <span class="hero-num">雙軌</span>
-    <div class="hero-desc">規則引擎 + LLM 架構<br><span class="hero-sub">不靠 AI 判斷風險，防幻覺漏判</span></div>
+  <div class="hero-detail" id="hero-detail-1">
+    以 38 筆人工標註的 gold set 驗證，高風險條款一筆未漏（<strong style="color:#E8C96A;">Recall = 100%</strong>）。整體偵測率 61%，採保守設計——寧可多標，確保高風險不會被 AI 遺漏。
+  </div>
+  <div class="hero-detail" id="hero-detail-2">
+    <strong style="color:#E8C96A;">規則引擎</strong>負責判定風險等級（確定性邏輯，不受 AI 幻覺影響），<strong style="color:#E8C96A;">LLM</strong> 只負責把風險翻成白話並給出協商對策。兩者各司其職——高風險由規則把關，AI 負責解釋，不靠 AI 猜測是否有風險。
   </div>
 </div>
 
@@ -1189,6 +1243,20 @@
     const resultsEl = document.getElementById('results');
     resultsEl.focus();
     window.scrollTo({ top: resultsEl.offsetTop - 20, behavior: 'smooth' });
+  }
+
+  function toggleHero(i) {
+    const btn    = document.getElementById(`hero-btn-${i}`);
+    const detail = document.getElementById(`hero-detail-${i}`);
+    const isOpen = detail.classList.toggle('open');
+    btn.classList.toggle('active', isOpen);
+    btn.setAttribute('aria-expanded', isOpen ? 'true' : 'false');
+    // close others
+    [0,1,2].filter(j => j !== i).forEach(j => {
+      document.getElementById(`hero-detail-${j}`).classList.remove('open');
+      document.getElementById(`hero-btn-${j}`).classList.remove('active');
+      document.getElementById(`hero-btn-${j}`).setAttribute('aria-expanded', 'false');
+    });
   }
 
   function toggleChange(i) {
