@@ -51,6 +51,29 @@ class ReviewAdvice(BaseModel):
     acceptable_count: int
 
 
+class NegotiateRequest(BaseModel):
+    clause_id: str
+    risk_code: str
+    risk_name: str
+    old_text: str = ""
+    new_text: str = ""
+    change_type: str = ""
+
+
+class PlaybookTier(BaseModel):
+    tier1: str
+    tier1_clause: str = ""
+    tier2: str
+    tier2_clause: str = ""
+    redline: str
+
+
+class NegotiateResponse(BaseModel):
+    clause_id: str
+    risk_code: str
+    playbook: PlaybookTier
+
+
 class CompareResponse(BaseModel):
     # metadata
     original_filename: str

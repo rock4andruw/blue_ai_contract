@@ -11,13 +11,14 @@ from typing import Optional
 from fastapi import APIRouter, HTTPException, UploadFile, File, Form, Depends
 from fastapi.responses import JSONResponse
 
-from .schemas_api import CompareResponse, KeyChange, RiskFlagItem, ReviewAdvice
+from .schemas_api import CompareResponse, KeyChange, RiskFlagItem, ReviewAdvice, NegotiateRequest, NegotiateResponse, PlaybookTier
 from ..services.contract.orchestrator import compare as run_pipeline
 from ..services.contract.parser import ContractParser
 from ..services.contract.alignment import ContractAligner
 from ..services.contract.diff_engine import DiffEngine
 from ..services.contract.risk_engine import RiskEngine
 from ..services.contract.llm_service import generate_sections
+from ..services.contract.negotiate_service import generate_playbook
 from ..services.contract.report_generator import build_report, to_markdown, LEVEL_ZH
 from ..services.contract.schemas import RISK_CODES
 
@@ -203,6 +204,32 @@ async def compare_example(
         revised_filename=Path(rev_path).name,
         api_key=api_key,
         start_time=start,
+    )
+
+
+# ── Endpoint: three-tier negotiation playbook ────────────────────────────────
+
+@router.post("/negotiate", response_model=NegotiateResponse, summary="生成三層協商對策")
+async def negotiate_clause(req: NegotiateRequest):
+    """針對單一條款生成三層 Playbook 協商立場（按需呼叫，節省 token）。"""
+    result = generate_playbook(
+        clause_id=req.clause_id,
+        risk_code=req.risk_code,
+        risk_name=req.risk_name,
+        old_text=req.old_text,
+        new_text=req.new_text,
+        change_type=req.change_type,
+    )
+    return NegotiateResponse(
+        clause_id=req.clause_id,
+        risk_code=req.risk_code,
+        playbook=PlaybookTier(
+            tier1=result.get("tier1", ""),
+            tier1_clause=result.get("tier1_clause", ""),
+            tier2=result.get("tier2", ""),
+            tier2_clause=result.get("tier2_clause", ""),
+            redline=result.get("redline", ""),
+        ),
     )
 
 

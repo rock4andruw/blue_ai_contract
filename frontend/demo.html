@@ -475,6 +475,75 @@
     .attr-deleted  { background: var(--red-light);   color: var(--red);   border: 1px solid #FACDD3; }
     .attr-modified { background: var(--gold-light);  color: var(--gold);  border: 1px solid #EDD68A; }
 
+    /* ── Negotiate button ── */
+    .negotiate-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 10px;
+      font-weight: 600;
+      padding: 3px 10px;
+      border-radius: 2px;
+      border: 1px solid var(--border);
+      background: var(--surface);
+      color: var(--ink-light);
+      cursor: pointer;
+      letter-spacing: .3px;
+      text-transform: uppercase;
+      transition: border-color .15s, color .15s, background .15s;
+      margin-left: 6px;
+      vertical-align: middle;
+    }
+    .negotiate-btn:hover:not(:disabled) { border-color: #2563EB; color: #2563EB; background: #EFF6FF; }
+    .negotiate-btn:disabled { opacity: .55; cursor: not-allowed; }
+
+    /* ── Playbook three-tier result ── */
+    .playbook-result { margin-top: 10px; display: none; }
+    .playbook-result.visible { display: block; }
+    .tier-block {
+      padding: 10px 14px;
+      border-radius: 3px;
+      margin-bottom: 6px;
+      font-size: 12.5px;
+      line-height: 1.65;
+    }
+    .tier-label {
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 10px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: .5px;
+      margin-bottom: 4px;
+    }
+    .tier-green  { background: var(--green-light); border-left: 3px solid var(--green); }
+    .tier-green  .tier-label { color: var(--green); }
+    .tier-yellow { background: var(--gold-light);  border-left: 3px solid var(--gold);  }
+    .tier-yellow .tier-label { color: var(--gold); }
+    .tier-red    { background: var(--red-light);   border-left: 3px solid var(--red);   }
+    .tier-red    .tier-label { color: var(--red); }
+    .tier-clause {
+      margin-top: 6px;
+      padding: 7px 10px;
+      background: rgba(255,255,255,.65);
+      border-radius: 2px;
+      font-size: 12px;
+      color: var(--ink);
+      white-space: pre-wrap;
+      word-break: break-word;
+    }
+    .tier-clause::before {
+      content: "建議條款文字";
+      display: block;
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 9.5px;
+      font-weight: 600;
+      letter-spacing: .4px;
+      text-transform: uppercase;
+      opacity: .6;
+      margin-bottom: 4px;
+    }
+
     /* download */
     .btn-dl {
       display: inline-flex;
@@ -999,6 +1068,8 @@
   const RISK_CLASS  = { high: 'risk-high', medium: 'risk-medium', low: 'risk-low' };
   const VERDICT_CLASS = { high: 'verdict-high', medium: 'verdict-medium', low: 'verdict-low', none: 'verdict-none' };
 
+  let _changes = [];
+
   function renderResults(d) {
     stopLoadingAnimation();
     document.getElementById('loading').style.display = 'none';
@@ -1049,6 +1120,7 @@
     } else {
       const isNum = s => /^[\d一二三四五六七八九十\.]+$/.test(s);
       const fmtClause = s => isNum(s) ? `第 ${escHtml(s)} 條` : escHtml(s);
+      _changes = d.key_changes;
       changesEl.innerHTML = d.key_changes.map((c, i) => `
         <div class="change-item change-item-${c.risk_level}">
           <button type="button" class="change-header" onclick="toggleChange(${i})" aria-expanded="false" id="chev-btn-${i}">
@@ -1063,10 +1135,11 @@
             <div>${escHtml(c.plain_summary)}</div>
             <div class="field-label">商業影響</div>
             <div>${escHtml(c.business_impact)}</div>
-            <div class="field-label">協商對策</div>
-            <ul class="options-list">
-              ${c.negotiation_options.map(o => `<li>${escHtml(o)}</li>`).join('')}
-            </ul>
+            <div class="field-label">
+              三層協商對策
+              <button class="negotiate-btn" id="neg-btn-${i}" onclick="loadNegotiate(${i})">📋 生成對策</button>
+            </div>
+            <div class="playbook-result" id="neg-${i}"></div>
             <div class="field-label" style="margin-top:18px;">
               原文對照
               <button class="diff-toggle" id="diff-btn-${i}" onclick="toggleDiff(${i})">▶ 查看</button>
@@ -1144,6 +1217,57 @@
     const isOpen = block.classList.toggle('open');
     btn.classList.toggle('open', isOpen);
     btn.textContent = isOpen ? '▼ 收合' : '▶ 查看';
+  }
+
+  async function loadNegotiate(i) {
+    const c   = _changes[i];
+    const btn = document.getElementById(`neg-btn-${i}`);
+    const box = document.getElementById(`neg-${i}`);
+
+    btn.disabled = true;
+    btn.textContent = '⏳ 分析中…';
+
+    try {
+      const res = await fetch(`${API_BASE}/api/v1/contracts/negotiate`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          clause_id:   c.clause_id,
+          risk_code:   c.risk_code,
+          risk_name:   c.risk_name,
+          old_text:    c.old_text  || '',
+          new_text:    c.new_text  || '',
+          change_type: c.change_type || '',
+        }),
+      });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const data = await res.json();
+      const p = data.playbook;
+
+      box.innerHTML = `
+        <div class="tier-block tier-green">
+          <div class="tier-label">🟢 首選立場（Tier 1）</div>
+          <div>${escHtml(p.tier1)}</div>
+          ${p.tier1_clause ? `<div class="tier-clause">${escHtml(p.tier1_clause)}</div>` : ''}
+        </div>
+        <div class="tier-block tier-yellow">
+          <div class="tier-label">🟡 可接受妥協（Tier 2）</div>
+          <div>${escHtml(p.tier2)}</div>
+          ${p.tier2_clause ? `<div class="tier-clause">${escHtml(p.tier2_clause)}</div>` : ''}
+        </div>
+        <div class="tier-block tier-red">
+          <div class="tier-label">🔴 絕對底線（Red Line）</div>
+          <div>${escHtml(p.redline)}</div>
+        </div>
+      `;
+      box.classList.add('visible');
+      btn.textContent = '✓ 已生成';
+    } catch (e) {
+      btn.disabled = false;
+      btn.textContent = '⚠ 重試';
+      box.innerHTML = `<div style="color:var(--red);font-size:12px;padding:6px 0;">載入失敗：${escHtml(String(e))}</div>`;
+      box.classList.add('visible');
+    }
   }
 
   function escHtml(str) {
