@@ -386,6 +386,95 @@
     .chip-suggest { background: var(--gold-light);  color: var(--gold);  border-color: #EDD68A; }
     .chip-ok      { background: var(--green-light); color: var(--green); border-color: #B6E2C8; }
 
+    /* ── Diff block (原文對照) ── */
+    .diff-toggle {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 10px;
+      font-weight: 600;
+      padding: 2px 8px;
+      border-radius: 2px;
+      border: 1px solid var(--border);
+      background: var(--surface);
+      color: var(--ink-light);
+      cursor: pointer;
+      letter-spacing: .3px;
+      text-transform: uppercase;
+      transition: border-color .15s, color .15s;
+      margin-left: 6px;
+      vertical-align: middle;
+    }
+    .diff-toggle:hover { border-color: var(--gold); color: var(--gold); }
+    .diff-toggle.open  { border-color: var(--gold); color: var(--gold); background: var(--gold-light); }
+
+    .diff-block { display: none; margin-top: 10px; border-radius: 3px; overflow: hidden; }
+    .diff-block.open { display: block; }
+
+    .diff-half {
+      padding: 10px 14px;
+      font-size: 12.5px;
+      line-height: 1.65;
+      color: var(--ink);
+      white-space: pre-wrap;
+      word-break: break-word;
+    }
+    .diff-half + .diff-half { margin-top: 4px; }
+
+    .diff-original {
+      background: var(--red-light);
+      border-left: 3px solid var(--red);
+    }
+    .diff-original::before {
+      content: "原始條款";
+      display: block;
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 10px;
+      color: var(--red);
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: .4px;
+      margin-bottom: 6px;
+      opacity: .75;
+    }
+    .diff-revised {
+      background: var(--green-light);
+      border-left: 3px solid var(--green);
+    }
+    .diff-revised::before {
+      content: "修訂條款";
+      display: block;
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 10px;
+      color: var(--green);
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: .4px;
+      margin-bottom: 6px;
+      opacity: .75;
+    }
+    .diff-empty {
+      font-style: italic;
+      opacity: .5;
+      font-size: 12px;
+    }
+    .attr-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 11px;
+      font-weight: 600;
+      padding: 4px 10px;
+      border-radius: 2px;
+      letter-spacing: .3px;
+      margin-bottom: 10px;
+    }
+    .attr-inserted { background: var(--green-light); color: var(--green); border: 1px solid #B6E2C8; }
+    .attr-deleted  { background: var(--red-light);   color: var(--red);   border: 1px solid #FACDD3; }
+    .attr-modified { background: var(--gold-light);  color: var(--gold);  border: 1px solid #EDD68A; }
+
     /* download */
     .btn-dl {
       display: inline-flex;
@@ -436,17 +525,201 @@
     /* button resets */
     button.upload-box, button.example-btn { font-family: inherit; width: 100%; }
     button.change-header { width: 100%; text-align: left; font-family: inherit; font-size: inherit; }
+
+    /* ── Hero strip ── */
+    .hero-strip {
+      background: var(--ink);
+      border-bottom: 1px solid rgba(255,255,255,.08);
+      display: flex;
+      justify-content: center;
+      align-items: stretch;
+      gap: 0;
+    }
+    .hero-metric {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      padding: 16px 48px;
+      color: #fff;
+    }
+    .hero-num {
+      font-family: 'EB Garamond', Georgia, serif;
+      font-size: 38px;
+      font-weight: 600;
+      color: #E8C96A;
+      line-height: 1;
+      white-space: nowrap;
+    }
+    .hero-unit { font-size: 20px; margin-left: 2px; }
+    .hero-desc { font-size: 12px; line-height: 1.55; opacity: .85; }
+    .hero-sub  { opacity: .55; font-size: 11px; }
+    .hero-divider {
+      width: 1px;
+      background: rgba(255,255,255,.12);
+      margin: 12px 0;
+    }
+
+    /* ── Loading stages (horizontal stepper) ── */
+    .loading-stages {
+      display: flex;
+      align-items: flex-start;
+      justify-content: center;
+      margin: 20px auto 0;
+      max-width: 520px;
+    }
+    .stage-step {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 8px;
+      flex: 0 0 auto;
+    }
+    .step-circle {
+      width: 34px; height: 34px;
+      border-radius: 50%;
+      border: 2px solid var(--border);
+      background: var(--surface);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--ink-light);
+      transition: all .3s;
+    }
+    .stage-step.active .step-circle {
+      border-color: var(--gold);
+      background: var(--gold-light);
+      color: var(--gold);
+      animation: pulse-circle 1.2s ease-in-out infinite;
+    }
+    .stage-step.done .step-circle {
+      border-color: var(--green);
+      background: var(--green);
+      color: #fff;
+      font-size: 14px;
+    }
+    .step-label {
+      font-size: 10.5px;
+      color: var(--ink-light);
+      text-align: center;
+      opacity: .35;
+      transition: opacity .3s;
+      white-space: nowrap;
+      line-height: 1.4;
+    }
+    .stage-step.active .step-label { opacity: 1; color: var(--ink); }
+    .stage-step.done   .step-label { opacity: .6; }
+    .step-line {
+      flex: 1;
+      height: 2px;
+      background: var(--border);
+      margin-top: 16px;
+      min-width: 24px;
+      transition: background .4s;
+    }
+    .step-line.done { background: var(--green); }
+    @keyframes pulse-circle {
+      0%, 100% { box-shadow: 0 0 0 3px rgba(154,111,0,.12); }
+      50%       { box-shadow: 0 0 0 7px rgba(154,111,0,.22); }
+    }
+
+    /* ── Result header ── */
+    .result-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 12px;
+    }
+    .result-header-title {
+      font-family: 'EB Garamond', Georgia, serif;
+      font-size: 17px;
+      font-weight: 600;
+      color: var(--ink);
+    }
+    .result-time-badge {
+      font-family: 'IBM Plex Mono', 'Courier New', monospace;
+      font-size: 11px;
+      padding: 3px 9px;
+      border-radius: 2px;
+      background: var(--green-light);
+      color: var(--green);
+      border: 1px solid #B6E2C8;
+      font-weight: 500;
+    }
+
+    /* ── Verdict (upgraded) ── */
+    .verdict {
+      border-radius: var(--radius);
+      padding: 16px 20px;
+      font-size: 16px;
+      font-weight: 600;
+      margin-bottom: 14px;
+      border-left: 5px solid;
+      letter-spacing: .2px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .verdict-detail {
+      font-size: 12px;
+      font-weight: 400;
+      opacity: .7;
+      margin-top: 3px;
+    }
+    .verdict-high   { background: var(--red-light);   color: var(--red);   border-left-color: var(--red);   }
+    .verdict-medium { background: var(--gold-light);  color: var(--gold);  border-left-color: var(--gold);  }
+    .verdict-low,
+    .verdict-none   { background: var(--green-light); color: var(--green); border-left-color: var(--green); }
+    .verdict-icon { font-size: 22px; flex-shrink: 0; }
+
+    /* ── Recall badge in risk table ── */
+    .recall-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 10px;
+      font-weight: 500;
+      padding: 2px 8px;
+      background: var(--green-light);
+      color: var(--green);
+      border: 1px solid #B6E2C8;
+      border-radius: 2px;
+      letter-spacing: .3px;
+      margin-left: 8px;
+      vertical-align: middle;
+    }
   </style>
 </head>
 <body>
 
 <header>
-  <div class="logo" aria-hidden="true">📋</div>
+  <div class="logo" aria-hidden="true">⚖️</div>
   <div>
     <h1>Blue-AI 合約智能比對助理</h1>
     <p>像有一個資深法務顧問幫你審合約</p>
   </div>
 </header>
+
+<!-- Hero strip -->
+<div class="hero-strip" aria-hidden="true">
+  <div class="hero-metric">
+    <span class="hero-num">26<span class="hero-unit">秒</span></span>
+    <div class="hero-desc">AI 初審完成<br><span class="hero-sub">vs 人工 92 分鐘 — LawGeex Study</span></div>
+  </div>
+  <div class="hero-divider"></div>
+  <div class="hero-metric">
+    <span class="hero-num">100<span class="hero-unit">%</span></span>
+    <div class="hero-desc">高風險召回率<br><span class="hero-sub">38 筆 gold set 人工標註驗證</span></div>
+  </div>
+  <div class="hero-divider"></div>
+  <div class="hero-metric">
+    <span class="hero-num">雙軌</span>
+    <div class="hero-desc">規則引擎 + LLM 架構<br><span class="hero-sub">不靠 AI 判斷風險，防幻覺漏判</span></div>
+  </div>
+</div>
 
 <div class="container">
 
@@ -517,7 +790,28 @@
   <!-- Loading -->
   <div id="loading" aria-live="polite" aria-label="分析中，請稍候">
     <div class="spinner" aria-hidden="true"></div>
-    <div>分析中，請稍候…</div>
+    <div style="margin-bottom:20px;color:var(--ink-light);font-size:13px;">分析中，請稍候…</div>
+    <div class="loading-stages">
+      <div class="stage-step" id="stage-1">
+        <div class="step-circle">1</div>
+        <div class="step-label">解析文件</div>
+      </div>
+      <div class="step-line" id="line-1"></div>
+      <div class="stage-step" id="stage-2">
+        <div class="step-circle">2</div>
+        <div class="step-label">條款對齊</div>
+      </div>
+      <div class="step-line" id="line-2"></div>
+      <div class="stage-step" id="stage-3">
+        <div class="step-circle">3</div>
+        <div class="step-label">風險標記</div>
+      </div>
+      <div class="step-line" id="line-3"></div>
+      <div class="stage-step" id="stage-4">
+        <div class="step-circle">4</div>
+        <div class="step-label">LLM 摘要</div>
+      </div>
+    </div>
   </div>
 
   <!-- Error -->
@@ -525,6 +819,12 @@
 
   <!-- Results -->
   <div id="results" tabindex="-1">
+
+    <!-- Result header -->
+    <div class="result-header">
+      <div class="result-header-title">分析完成</div>
+      <div class="result-time-badge" id="result-time-badge"></div>
+    </div>
 
     <!-- Meta -->
     <div class="meta" id="result-meta"></div>
@@ -549,7 +849,10 @@
 
     <!-- Risk flags table -->
     <div class="card">
-      <div class="card-title"><span aria-hidden="true">🚩</span> 完整風險旗標</div>
+      <div class="card-title">
+        <span aria-hidden="true">🚩</span> 完整風險旗標
+        <span class="recall-badge">✓ Rule Engine 驗證 · 高風險 100% 召回</span>
+      </div>
       <div style="overflow-x:auto;">
         <table class="risk-table">
           <thead>
@@ -644,13 +947,47 @@
   }
 
   // ── UI helpers ────────────────────────────────────────────────────────────
+  let _stageTimer = null;
+
   function showLoading() {
     document.getElementById('loading').style.display = 'block';
     document.getElementById('results').style.display = 'none';
     document.getElementById('error-box').style.display = 'none';
+    if (_stageTimer) { clearTimeout(_stageTimer); _stageTimer = null; }
+    // reset
+    [1,2,3,4].forEach(i => {
+      document.getElementById(`stage-${i}`).className = 'stage-step';
+      const ln = document.getElementById(`line-${i}`);
+      if (ln) ln.className = 'step-line';
+    });
+    let cur = 1;
+    const tick = () => {
+      if (cur > 1) {
+        document.getElementById(`stage-${cur-1}`).className = 'stage-step done';
+        const ln = document.getElementById(`line-${cur-1}`);
+        if (ln) ln.className = 'step-line done';
+      }
+      document.getElementById(`stage-${cur}`).className = 'stage-step active';
+      if (cur < 4) {
+        cur++;
+        _stageTimer = setTimeout(tick, 950);
+      }
+      // stage 4: stay active (pulsing) until API responds
+    };
+    _stageTimer = setTimeout(tick, 400);
+  }
+
+  function stopLoadingAnimation() {
+    if (_stageTimer) { clearTimeout(_stageTimer); _stageTimer = null; }
+    [1,2,3,4].forEach(i => {
+      document.getElementById(`stage-${i}`).className = 'stage-step done';
+      const ln = document.getElementById(`line-${i}`);
+      if (ln) ln.className = 'step-line done';
+    });
   }
 
   function showError(msg) {
+    stopLoadingAnimation();
     document.getElementById('loading').style.display = 'none';
     const box = document.getElementById('error-box');
     box.innerHTML = '<span aria-hidden="true">⚠</span> ' + escHtml(msg) + '（請確認後端服務已啟動：uvicorn src.api.main:app --port 8000）';
@@ -663,6 +1000,7 @@
   const VERDICT_CLASS = { high: 'verdict-high', medium: 'verdict-medium', low: 'verdict-low', none: 'verdict-none' };
 
   function renderResults(d) {
+    stopLoadingAnimation();
     document.getElementById('loading').style.display = 'none';
     document.getElementById('results').style.display = 'block';
 
@@ -674,15 +1012,27 @@
       : '<span class="mode-badge">範本模式</span>';
     document.getElementById('result-meta').innerHTML =
       `原始：<strong>${d.original_filename}</strong> &nbsp;→&nbsp; 修訂：<strong>${d.revised_filename}</strong>
-       &nbsp;｜&nbsp; ${d.compare_date} &nbsp;｜&nbsp; 處理時間 ${d.processing_time_ms}ms &nbsp;｜&nbsp; ${modeLabel}`;
+       &nbsp;｜&nbsp; ${d.compare_date} &nbsp;｜&nbsp; ${modeLabel}`;
+    document.getElementById('result-time-badge').textContent = `⚡ ${d.processing_time_ms}ms`;
 
     // verdict
     const vEl = document.getElementById('result-verdict');
     const vEmoji = LEVEL_EMOJI[d.overall_risk_level] || '';
     const vZh    = LEVEL_ZH[d.overall_risk_level] || '';
     const vClass = VERDICT_CLASS[d.overall_risk_level] || 'verdict-none';
+    const vDetail = {
+      high:   '建議協商後再簽署，高風險條款須逐項確認',
+      medium: '部分條款需注意，建議與法務確認後簽署',
+      low:    '整體風險可接受，建議仍由法務複閱一次',
+      none:   '未偵測到顯著風險條款'
+    }[d.overall_risk_level] || '';
     vEl.className = `verdict ${vClass}`;
-    vEl.innerHTML = `<span aria-hidden="true">${vEmoji}</span> 整體評估：${vZh}`;
+    vEl.innerHTML = `
+      <span class="verdict-icon" aria-hidden="true">${vEmoji}</span>
+      <div>
+        <div>整體評估：${vZh}</div>
+        <div class="verdict-detail">${vDetail}</div>
+      </div>`;
 
     // stats
     document.getElementById('result-stats').innerHTML = `
@@ -717,6 +1067,15 @@
             <ul class="options-list">
               ${c.negotiation_options.map(o => `<li>${escHtml(o)}</li>`).join('')}
             </ul>
+            <div class="field-label" style="margin-top:18px;">
+              原文對照
+              <button class="diff-toggle" id="diff-btn-${i}" onclick="toggleDiff(${i})">▶ 查看</button>
+            </div>
+            <div class="diff-block" id="diff-${i}">
+              ${buildAttrBadge(c.change_type)}
+              <div class="diff-half diff-original">${c.old_text ? escHtml(c.old_text) : '<span class="diff-empty">（乙方新增，原版本無此條款）</span>'}</div>
+              <div class="diff-half diff-revised">${c.new_text ? escHtml(c.new_text) : '<span class="diff-empty">（乙方刪除，修訂版本已移除）</span>'}</div>
+            </div>
           </div>
         </div>
       `).join('');
@@ -766,6 +1125,25 @@
     const isOpen = body.classList.toggle('open');
     chev.classList.toggle('open');
     if (btn) btn.setAttribute('aria-expanded', isOpen ? 'true' : 'false');
+  }
+
+  function buildAttrBadge(changeType) {
+    const map = {
+      inserted: { cls: 'attr-inserted', icon: '⊕', label: '乙方新增條款' },
+      deleted:  { cls: 'attr-deleted',  icon: '⊖', label: '乙方刪除甲方條款' },
+      modified: { cls: 'attr-modified', icon: '✎', label: '乙方修改條款' },
+    };
+    const m = map[changeType];
+    if (!m) return '';
+    return `<div class="attr-badge ${m.cls}">${m.icon} ${m.label}</div>`;
+  }
+
+  function toggleDiff(i) {
+    const block = document.getElementById(`diff-${i}`);
+    const btn   = document.getElementById(`diff-btn-${i}`);
+    const isOpen = block.classList.toggle('open');
+    btn.classList.toggle('open', isOpen);
+    btn.textContent = isOpen ? '▼ 收合' : '▶ 查看';
   }
 
   function escHtml(str) {

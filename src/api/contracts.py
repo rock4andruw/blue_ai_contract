@@ -75,6 +75,7 @@ def _build_response(
 
     elapsed_ms = int((time.time() - start_time) * 1000)
 
+    flag_map = {f.clause_id: f for f in flags}
     key_changes = [
         KeyChange(
             rank=s.rank,
@@ -85,6 +86,9 @@ def _build_response(
             plain_summary=s.plain_summary,
             business_impact=s.business_impact,
             negotiation_options=s.negotiation_options,
+            old_text=flag_map[s.clause_id].old_text if s.clause_id in flag_map else "",
+            new_text=flag_map[s.clause_id].new_text if s.clause_id in flag_map else "",
+            change_type=flag_map[s.clause_id].change_type if s.clause_id in flag_map else "",
         )
         for s in report.key_sections
     ]

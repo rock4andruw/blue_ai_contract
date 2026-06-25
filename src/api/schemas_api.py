@@ -31,6 +31,9 @@ class KeyChange(BaseModel):
     plain_summary: str
     business_impact: str
     negotiation_options: List[str]
+    old_text: str = ""
+    new_text: str = ""
+    change_type: str = ""
 
 
 class RiskFlagItem(BaseModel):
