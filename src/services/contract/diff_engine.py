@@ -21,7 +21,12 @@ class DiffEngine:
             if old is not None and new is not None:
                 if old.content_hash == new.content_hash:
                     continue  # unchanged — skip
-                clause_id = old.clause_number or new.clause_number or "?"
+                clause_id = (
+                    old.clause_number or new.clause_number
+                    or (old.title[:15] if old.title and old.title != "未命名條款" else None)
+                    or (new.title[:15] if new.title and new.title != "未命名條款" else None)
+                    or "未知條款"
+                )
                 diffs.append(DiffItem(
                     clause_id=clause_id,
                     change_type="modified",

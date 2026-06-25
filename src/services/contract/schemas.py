@@ -121,6 +121,9 @@ RISK_CODES = {
     "RISK_TERMINATION_CHANGED":      "終止條款變更",
     "RISK_FORCE_MAJEURE_EXPANDED":   "不可抗力範圍擴大",
     "RISK_JURISDICTION_CHANGED":     "管轄法院變更",
-    "RISK_OTHER":                    "其他變更",
-    "none":                          "無風險",
+    "RISK_IP_OWNERSHIP_CHANGED":          "智慧財產權歸屬改變",
+    "RISK_LIABILITY_DIRECTION_REVERSED":  "違約賠償責任方向反轉",
+    "RISK_CONFIDENTIALITY_SCOPE_CHANGED": "保密義務範圍改變",
+    "RISK_OTHER":                         "其他變更",
+    "none":                               "無風險",
 }

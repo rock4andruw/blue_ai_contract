@@ -333,6 +333,80 @@ def rule_broad_disclaimer_added(diff: DiffItem) -> Optional[RiskFlag]:
 # Rule registry — ordered by priority (high-impact first)
 # ------------------------------------------------------------------
 
+def rule_ip_ownership_changed(diff: DiffItem) -> Optional[RiskFlag]:
+    """智慧財產權歸屬改變（NDA / 委外合約）。"""
+    if diff.change_type != "modified":
+        return None
+    keywords = ["智慧財產權", "所有權", "著作權", "專利"]
+    if not any(k in (diff.old_text or "") for k in keywords):
+        return None
+    # 歸屬從甲方→乙方或反向轉移
+    old_owner = "甲方" if "歸甲方所有" in (diff.old_text or "") or "應為甲方所有" in (diff.old_text or "") else None
+    new_owner = "乙方" if "歸乙方所有" in (diff.new_text or "") or "應為乙方所有" in (diff.new_text or "") else None
+    if old_owner and new_owner:
+        return RiskFlag(
+            clause_id=diff.clause_id,
+            risk_code="RISK_IP_OWNERSHIP_CHANGED",
+            risk_level="high",
+            risk_direction="adverse",
+            trigger_reason=f"智慧財產權歸屬由{old_owner}改為{new_owner}，原有 IP 控制權喪失",
+            old_text=diff.old_text,
+            new_text=diff.new_text,
+            change_type=diff.change_type,
+        )
+    return None
+
+
+def rule_liability_direction_reversed(diff: DiffItem) -> Optional[RiskFlag]:
+    """違約賠償責任方向反轉（由乙方賠甲方→甲方賠乙方，對甲方不利）。"""
+    if diff.change_type != "modified":
+        return None
+    keywords = ["懲罰性違約金", "賠償", "違約"]
+    if not any(k in (diff.old_text or "") for k in keywords):
+        return None
+    old_liable = "乙方" if re.search(r'乙方.{0,10}(違反|賠償|應賠)', diff.old_text or "") else None
+    new_liable = "甲方" if re.search(r'甲方.{0,10}(違反|賠償|應賠)', diff.new_text or "") else None
+    if old_liable and new_liable:
+        return RiskFlag(
+            clause_id=diff.clause_id,
+            risk_code="RISK_LIABILITY_DIRECTION_REVERSED",
+            risk_level="high",
+            risk_direction="adverse",
+            trigger_reason="違約賠償責任方向反轉：原本乙方賠甲方，改為甲方承擔賠償責任",
+            old_text=diff.old_text,
+            new_text=diff.new_text,
+            change_type=diff.change_type,
+        )
+    return None
+
+
+def rule_confidentiality_scope_changed(diff: DiffItem) -> Optional[RiskFlag]:
+    """保密義務範圍改變（單務→雙務，或保密主體改變）。"""
+    if diff.change_type != "modified":
+        return None
+    keywords = ["保密義務", "機密資訊", "揭露方", "接受方"]
+    if not any(k in (diff.old_text or "") + (diff.new_text or "") for k in keywords):
+        return None
+    # 保密主體從「乙方」單向變為「雙方」或「接受方/揭露方」互換
+    scope_change = (
+        "乙方" in (diff.old_text or "") and "接受方" in (diff.new_text or "")
+    ) or (
+        "甲方（揭露方）" in (diff.old_text or "") and "揭露方" in (diff.new_text or "")
+    )
+    if scope_change:
+        return RiskFlag(
+            clause_id=diff.clause_id,
+            risk_code="RISK_CONFIDENTIALITY_SCOPE_CHANGED",
+            risk_level="medium",
+            risk_direction="adverse",
+            trigger_reason="保密義務範圍改變：由單務（乙方保密）改為雙務（雙方互保），需確認對公司的實際影響",
+            old_text=diff.old_text,
+            new_text=diff.new_text,
+            change_type=diff.change_type,
+        )
+    return None
+
+
 RULES = [
     rule_sla_degrade,
     rule_response_time_extended,
@@ -345,6 +419,9 @@ RULES = [
     rule_force_majeure_expanded,
     rule_jurisdiction_changed,
     rule_data_control_lost,
+    rule_ip_ownership_changed,
+    rule_liability_direction_reversed,
+    rule_confidentiality_scope_changed,
 ]
 
 
@@ -356,8 +433,6 @@ class RiskEngine:
     def analyze(self, diffs: List[DiffItem]) -> List[RiskFlag]:
         flags: List[RiskFlag] = []
         for diff in diffs:
-            if diff.clause_id == "?":
-                continue
             for rule in RULES:
                 flag = rule(diff)
                 if flag is not None:

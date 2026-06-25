@@ -1,7 +1,13 @@
 """FastAPI application entry point."""
 
+from dotenv import load_dotenv
+load_dotenv()
+
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
+from fastapi.responses import FileResponse
+import os
 
 from .contracts import router as contracts_router
 
@@ -21,6 +27,15 @@ app.add_middleware(
 )
 
 app.include_router(contracts_router)
+
+_frontend_dir = os.path.join(os.path.dirname(__file__), "..", "..", "frontend")
+if os.path.isdir(_frontend_dir):
+    app.mount("/static", StaticFiles(directory=_frontend_dir), name="static")
+
+
+@app.get("/demo", summary="Demo UI")
+async def demo_ui():
+    return FileResponse(os.path.join(_frontend_dir, "demo.html"))
 
 
 @app.get("/", summary="Root")

@@ -50,13 +50,53 @@ def _build_user_prompt(flag: RiskFlag, reference_clause: str = "") -> str:
 
 
 def analyze_flag(flag: RiskFlag, reference_clause: str = "", api_key: Optional[str] = None) -> ReportSection:
-    """Analyze a single RiskFlag using Claude API. Falls back to template if no API key."""
-    key = api_key or os.environ.get("ANTHROPIC_API_KEY", "")
+    """Analyze a single RiskFlag. Priority: Gemini > Claude > template fallback."""
+    gemini_key = os.environ.get("GEMINI_API_KEY", "")
+    claude_key = api_key or os.environ.get("ANTHROPIC_API_KEY", "")
 
-    if key:
-        return _analyze_with_claude(flag, reference_clause, key)
+    if gemini_key:
+        return _analyze_with_gemini(flag, reference_clause, gemini_key)
+    elif claude_key:
+        return _analyze_with_claude(flag, reference_clause, claude_key)
     else:
         return _analyze_with_template(flag)
+
+
+def _analyze_with_gemini(flag: RiskFlag, reference_clause: str, api_key: str) -> ReportSection:
+    try:
+        from google import genai
+        from google.genai import types
+    except ImportError:
+        raise ImportError("google-genai not installed: pip install google-genai")
+
+    client = genai.Client(api_key=api_key)
+
+    import json
+    try:
+        response = client.models.generate_content(
+            model="gemini-3.1-flash-lite",
+            contents=_build_user_prompt(flag, reference_clause),
+            config=types.GenerateContentConfig(system_instruction=SYSTEM_PROMPT),
+        )
+        text = response.text.strip()
+        start = text.find("{")
+        end = text.rfind("}") + 1
+        data = json.loads(text[start:end])
+    except Exception as e:
+        # Fallback to template on quota / network errors
+        import logging
+        logging.warning(f"Gemini API error ({type(e).__name__}): {e} — falling back to template")
+        return _analyze_with_template(flag)
+
+    return ReportSection(
+        rank=0,
+        clause_id=flag.clause_id,
+        risk_level=flag.risk_level,
+        risk_code=flag.risk_code,
+        plain_summary=data.get("plain_summary", ""),
+        business_impact=data.get("business_impact", ""),
+        negotiation_options=data.get("negotiation_options", []),
+    )
 
 
 def _analyze_with_claude(flag: RiskFlag, reference_clause: str, api_key: str) -> ReportSection:
@@ -166,6 +206,33 @@ def _analyze_with_template(flag: RiskFlag) -> ReportSection:
                 "要求乙方建立備援機制，不可抗力不得作為長期免責依據",
             ],
         },
+        "RISK_IP_OWNERSHIP_CHANGED": {
+            "plain_summary": f"智慧財產權歸屬由甲方改為乙方（{flag.trigger_reason}），原有 IP 控制權喪失。",
+            "business_impact": "合約執行期間開發的成果、文件、程式碼等智慧財產權將歸屬乙方，公司未來使用或授權他人使用的空間大幅縮減。",
+            "negotiation_options": [
+                "要求恢復原條款：所有執行本合約所產生的智財權歸甲方所有",
+                "若乙方堅持，要求明確列出例外範圍（乙方原有技術不受影響），其餘仍歸甲方",
+                "要求甲方取得永久無償使用授權及再授權第三人之權利",
+            ],
+        },
+        "RISK_LIABILITY_DIRECTION_REVERSED": {
+            "plain_summary": f"違約賠償責任方向反轉（{flag.trigger_reason}），原本乙方須賠甲方，現改為甲方須賠乙方。",
+            "business_impact": "合約中的懲罰性違約金與賠償義務改由甲方承擔，若發生爭議，公司（甲方）反而須支付鉅額賠償（200 萬元以上）。",
+            "negotiation_options": [
+                "要求恢復原條款：違約賠償責任由乙方單向承擔",
+                "若接受雙向責任，要求明確列出甲方可能違約的情境，限縮甲方承擔範圍",
+                "要求將懲罰性違約金上限降低，或改為實際損害賠償，避免固定高額罰款",
+            ],
+        },
+        "RISK_CONFIDENTIALITY_SCOPE_CHANGED": {
+            "plain_summary": f"保密義務範圍改變（{flag.trigger_reason}），由單方保密改為雙方互保。",
+            "business_impact": "保密方向改變，雙方均負有保密義務，乙方可能以此主張甲方揭露其機密資訊時亦需承擔保密責任，增加甲方合規負擔。",
+            "negotiation_options": [
+                "確認雙務保密對公司是否有利（若公司也有機密需保護，雙務版反而更好）",
+                "若不接受雙務，要求恢復單務版：僅乙方對甲方負保密義務",
+                "若接受雙務，要求明確定義甲方機密資訊的範圍，避免模糊條款擴大責任",
+            ],
+        },
         "RISK_JURISDICTION_CHANGED": {
             "plain_summary": f"管轄法院改變（{flag.trigger_reason}），訴訟地點對甲方較不利。",
             "business_impact": "爭議發生時，甲方需前往乙方所在地提告，增加訴訟成本與不便。",
@@ -206,22 +273,31 @@ def _analyze_with_template(flag: RiskFlag) -> ReportSection:
 def generate_sections(
     flags: List[RiskFlag],
     api_key: Optional[str] = None,
-    max_sections: int = 5,
+    max_medium: int = 3,
     return_mode: bool = False,
 ):
-    """Generate ReportSections for the top N highest-risk flags.
+    """Generate ReportSections: all high-risk + top max_medium medium-risk flags.
 
     Args:
+        max_medium: maximum number of medium-risk items to include (default 3).
         return_mode: if True, returns (sections, mode_str) instead of just sections.
-                     mode_str is "claude_api" or "template_fallback".
+                     mode_str is "claude_api", "gemini_api", or "template_fallback".
     """
     level_order = {"high": 0, "medium": 1, "low": 2, "none": 3}
     adverse_flags = [f for f in flags if f.risk_direction == "adverse"]
-    sorted_flags = sorted(adverse_flags, key=lambda f: level_order.get(f.risk_level, 9))
-    top_flags = sorted_flags[:max_sections]
+    high_flags   = [f for f in adverse_flags if f.risk_level == "high"]
+    medium_flags = [f for f in adverse_flags if f.risk_level == "medium"][:max_medium]
+    top_flags = high_flags + medium_flags
 
-    key = api_key or os.environ.get("ANTHROPIC_API_KEY", "")
-    mode = "claude_api" if key else "template_fallback"
+    gemini_key = os.environ.get("GEMINI_API_KEY", "")
+    claude_key = api_key or os.environ.get("ANTHROPIC_API_KEY", "")
+    key = gemini_key or claude_key
+    if gemini_key:
+        mode = "gemini_api"
+    elif claude_key:
+        mode = "claude_api"
+    else:
+        mode = "template_fallback"
 
     sections = []
     for rank, flag in enumerate(top_flags, start=1):

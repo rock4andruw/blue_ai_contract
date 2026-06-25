@@ -43,7 +43,6 @@ def _build_response(
     revised_path: str,
     original_filename: str,
     revised_filename: str,
-    max_sections: int,
     api_key: Optional[str],
     start_time: float,
 ) -> CompareResponse:
@@ -62,7 +61,7 @@ def _build_response(
     flags = risk_engine.analyze(diffs)
 
     sections, summary_mode = generate_sections(
-        flags, api_key=api_key, max_sections=max_sections, return_mode=True
+        flags, api_key=api_key, return_mode=True
     )
 
     report = build_report(
@@ -130,7 +129,6 @@ def _build_response(
 async def compare_contracts(
     original_file: UploadFile = File(..., description="原始合約（PDF/DOCX/MD）"),
     revised_file: UploadFile = File(..., description="修訂合約（PDF/DOCX/MD）"),
-    max_sections: int = Form(5, ge=1, le=10),
     api_key: Optional[str] = Depends(_get_api_key),
 ):
     """上傳兩份合約，回傳完整比對報告（JSON）。"""
@@ -159,7 +157,6 @@ async def compare_contracts(
             revised_path=rev_path,
             original_filename=original_file.filename or "original",
             revised_filename=revised_file.filename or "revised",
-            max_sections=max_sections,
             api_key=api_key,
             start_time=start,
         )
@@ -179,7 +176,6 @@ async def compare_contracts(
 )
 async def compare_example(
     example_id: str,
-    max_sections: int = 5,
     api_key: Optional[str] = Depends(_get_api_key),
 ):
     """使用內建範例合約進行比對，example_id 為 v2 / v3 / v4 / v5。"""
@@ -199,9 +195,8 @@ async def compare_example(
     return _build_response(
         original_path=orig_path,
         revised_path=rev_path,
-        original_filename=f"SLA-like Base Contract v1.md",
+        original_filename="SLA-like Base Contract v1.md",
         revised_filename=Path(rev_path).name,
-        max_sections=max_sections,
         api_key=api_key,
         start_time=start,
     )

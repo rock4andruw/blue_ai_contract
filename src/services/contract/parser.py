@@ -27,11 +27,12 @@ class ContractDocument:
 
 
 class ContractParser:
-    # Matches: 第5條、第5.2條、5.、5.2、Article 3、Section 3.1
+    # Matches: 第5條、第5.2條、5.、5.2、一、二、三、Article 3、Section 3.1
     CLAUSE_PATTERNS = [
         r'^第\s*(\d+(?:\.\d+)*)\s*條',
-        r'^(\d+(?:\.\d+)+)\s*[、\s]',   # 5.2、或 5.2 開頭
-        r'^(\d+)\.\s+\S',               # 5. 開頭（整條）
+        r'^([一二三四五六七八九十百]+)[、．]',  # 一、二、三、（中文數字條款）
+        r'^(\d+(?:\.\d+)+)\s*[、\s]',          # 5.2、或 5.2 開頭
+        r'^(\d+)\.\s+\S',                       # 5. 開頭（整條）
         r'^Article\s+(\d+(?:\.\d+)*)',
         r'^Section\s+(\d+(?:\.\d+)*)',
     ]
@@ -163,7 +164,7 @@ class ContractParser:
             raise ImportError("python-docx not installed: pip install python-docx")
 
         doc = docx.Document(file_path)
-        raw = "\n".join(p.text for p in doc.paragraphs if p.text.strip())
+        raw = "\n\n".join(p.text for p in doc.paragraphs if p.text.strip())
         clauses = self.split_into_clauses(raw)
         return ContractDocument(
             filename=Path(file_path).name,

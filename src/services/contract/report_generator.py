@@ -1,5 +1,6 @@
 """Report Generator: assembles all pipeline outputs into a ComparisonReport and Markdown."""
 
+import re
 from datetime import date
 from typing import List
 from .schemas import (
@@ -91,7 +92,8 @@ def to_markdown(report: ComparisonReport) -> str:
             emoji = LEVEL_EMOJI.get(s.risk_level, "")
             level_zh = LEVEL_ZH.get(s.risk_level, "")
             risk_name = RISK_CODES.get(s.risk_code, s.risk_code)
-            lines.append(f"### {s.rank}. {emoji} {risk_name}（第 {s.clause_id} 條）\n")
+            clause_label = f"第 {s.clause_id} 條" if re.match(r'^[\d一二三四五六七八九十\.]+$', s.clause_id) else s.clause_id
+            lines.append(f"### {s.rank}. {emoji} {risk_name}（{clause_label}）\n")
             lines.append(f"**風險等級**: {level_zh}  ")
             lines.append(f"**說明**: {s.plain_summary}  ")
             lines.append(f"**商業影響**: {s.business_impact}\n")
@@ -103,10 +105,13 @@ def to_markdown(report: ComparisonReport) -> str:
     lines.append("\n---\n")
     lines.append("## 審閱建議\n")
 
+    def _fmt_clause(cid: str) -> str:
+        return f"第 {cid} 條" if re.match(r'^[\d一二三四五六七八九十\.]+$', cid) else cid
+
     if report.must_negotiate:
-        lines.append(f"**必須協商**：第 {'、'.join(report.must_negotiate)} 條  ")
+        lines.append(f"**必須協商**：{'、'.join(_fmt_clause(c) for c in report.must_negotiate)}  ")
     if report.suggested_negotiate:
-        lines.append(f"**建議協商**：第 {'、'.join(report.suggested_negotiate)} 條  ")
+        lines.append(f"**建議協商**：{'、'.join(_fmt_clause(c) for c in report.suggested_negotiate)}  ")
     if report.acceptable:
         lines.append(f"**可接受**：其他 {len(report.acceptable)} 處行政性變更")
 
