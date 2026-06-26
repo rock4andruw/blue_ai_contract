@@ -79,7 +79,9 @@ AGENT_B_SYSTEM = """你是促成交易的商務法務顧問，熟悉台灣 SaaS 
 
 def _build_agent_prompt(flag: RiskFlag) -> str:
     risk_name = RISK_CODES.get(flag.risk_code, flag.risk_code)
-    return f"""規則引擎判定：「{flag.risk_level}」風險（{risk_name}）
+    return f"""請評估以下合約條款變更，判斷對甲方（買方）的風險等級。
+
+變更類型：{risk_name}
 觸發原因：{flag.trigger_reason}
 
 原始條款：
@@ -88,7 +90,7 @@ def _build_agent_prompt(flag: RiskFlag) -> str:
 修改後條款：
 {flag.new_text or '（已刪除）'}
 
-請根據以上資訊，輸出你的風險等級判斷（JSON）。"""
+請根據條款實際內容，輸出你的風險等級判斷（JSON）。"""
 
 
 def _parse_verdict(text: str, fallback_level: str) -> AgentVerdict:
@@ -180,6 +182,7 @@ def _judge(
 
     level_a = verdict_a.agreed_level
     level_b = verdict_b.agreed_level
+    _rank = {"high": 2, "medium": 1, "low": 0}
 
     # Both agree → confirmed, adopt their level
     if level_a == level_b:
@@ -191,7 +194,20 @@ def _judge(
             "agent_b_view": verdict_b.reasoning,
         }
 
-    # Disagree → pending, conservative: keep Rule Engine level
+    gap = abs(_rank.get(level_a, 1) - _rank.get(level_b, 1))
+
+    # Gap of 1 level (high vs medium, or medium vs low) → strict wins, confirmed
+    if gap == 1:
+        final = level_a if _rank.get(level_a, 1) > _rank.get(level_b, 1) else level_b
+        return {
+            "mas_status": "confirmed",
+            "mas_confidence": "medium",
+            "final_risk_level": final,
+            "agent_a_view": verdict_a.reasoning,
+            "agent_b_view": verdict_b.reasoning,
+        }
+
+    # Gap of 2 levels (high vs low) → genuine disagreement, pending
     return {
         "mas_status": "pending",
         "mas_confidence": "low",
