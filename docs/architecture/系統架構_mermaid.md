@@ -132,7 +132,7 @@ classDef mcp fill:#0f1a26,stroke:#60a5fa,stroke-width:1.5px,color:#eff6ff;
 classDef hetero fill:#1a0f1f,stroke:#e879f9,stroke-width:1.8px,color:#fdf4ff;
 
 class P1 done;
-class P15 mas;
+class P15 done;
 class P2 plan;
 class P3 ent;
 class EXT ext;
