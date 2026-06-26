@@ -2,15 +2,15 @@
 
 **競賽截止**：2026 年 8 月初
 **評審組成**：AI / AP / Infra 部長 + 黑客松評審
-**當前狀態**：Phase 1 完整完成，Phase 1.5 MAS 規劃確定、待實作
+**當前狀態**：Phase 1 完整完成，Phase 1.5 MAS 規劃確定、實作中
 
 ---
 
-## 已完成（Phase 1）
+## 已完成（Phase 1 + 本週）
 
 - [x] 核心管道：Parser → Alignment（LCS + Needleman-Wunsch）→ Diff → Risk Rule Engine → LLM Summary → Report
 - [x] FastAPI：`POST /api/v1/contracts/compare`、`GET /api/v1/contracts/compare/example/{id}`
-- [x] Demo UI：Hero 指標條、4 段橫向 Loading 動畫、結果卡片
+- [x] Demo UI：Hero 指標條（可點擊展開說明）、4 段橫向 Loading 動畫、結果卡片
 - [x] 風險歸因標籤（乙方新增／修改／刪除條款）
 - [x] 原文對照（before/after 可展開對比）
 - [x] 三層協商對策（`POST /api/v1/contracts/negotiate`，按需呼叫）
@@ -18,6 +18,8 @@
   - 🟢 首選立場 / 🟡 可接受妥協 / 🔴 絕對底線 + 替換條款文字
 - [x] HTML 追蹤修改清理（Word 匯出的 `<del>/<ins>` 自動剝除）
 - [x] Gemini 3.1 Flash Lite 為主要 LLM，Claude Sonnet 4.6 備援
+- [x] **Alignment 誤判修正**：相似度後處理（difflib ≥ 75%）合併重新編號條款，修正「原版本無此條款」誤判
+- [x] **Hero strip 可收合**：三個指標可點擊展開詳細說明（方法論、驗證數字、架構設計）
 
 ---
 
@@ -72,9 +74,10 @@ Rule Engine 完全不動。MAS 只加在 LLM 解釋層：
 ### 週次 1（6/30 前）
 
 - [ ] MAS 實作：Agent A/B prompt persona + asyncio.gather + Judge 邏輯
-- [ ] Graceful Degradation：超時退級 + fallback 機制
+- [ ] Graceful Degradation：`asyncio.wait_for` 超時退級 + fallback 機制
 - [ ] API 新增 `mas_status` / `mas_confidence` 欄位
 - [ ] UI：雙重驗證標籤 + Pending 衝突點展示
+- [ ] 拿到法務合約（NDA + IT 採購，甲方版 vs 乙方修改版）
 
 ### 週次 2（7/7 前）
 
