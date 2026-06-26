@@ -84,6 +84,11 @@ class ReportSection:
     plain_summary: str                # White-language description
     business_impact: str              # Commercial/legal impact
     negotiation_options: List[str]    # 2-3 actionable negotiation strategies
+    # MAS Phase 1.5 (defaults = no MAS ran)
+    mas_status: str = "single_agent"  # confirmed | pending | single_agent
+    mas_confidence: str = "low"       # high | low
+    mas_agent_a_view: str = ""        # strict agent reasoning
+    mas_agent_b_view: str = ""        # balanced agent reasoning
 
 
 @dataclass

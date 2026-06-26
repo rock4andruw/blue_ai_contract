@@ -34,6 +34,11 @@ class KeyChange(BaseModel):
     old_text: str = ""
     new_text: str = ""
     change_type: str = ""
+    # MAS Phase 1.5
+    mas_status: str = "single_agent"   # confirmed | pending | single_agent
+    mas_confidence: str = "low"        # high | low
+    mas_agent_a_view: str = ""
+    mas_agent_b_view: str = ""
 
 
 class RiskFlagItem(BaseModel):

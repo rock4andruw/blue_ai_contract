@@ -9,6 +9,7 @@ Receives structured risk_flags from RiskEngine and produces:
 import os
 from typing import List, Optional
 from .schemas import RiskFlag, ReportSection, RISK_CODES
+from .mas_service import run_mas
 
 
 SYSTEM_PROMPT = """你是專業的合約審查助理，專注於台灣企業 SLA / NDA / 採購合約的風險分析。
@@ -303,6 +304,18 @@ def generate_sections(
     for rank, flag in enumerate(top_flags, start=1):
         section = analyze_flag(flag, api_key=key or None)
         section.rank = rank
+
+        # MAS: cross-validate high-risk flags only (cost control)
+        if flag.risk_level == "high" and key:
+            mas = run_mas(flag, gemini_key=gemini_key, claude_key=claude_key)
+            section.mas_status = mas["mas_status"]
+            section.mas_confidence = mas["mas_confidence"]
+            section.mas_agent_a_view = mas["agent_a_view"]
+            section.mas_agent_b_view = mas["agent_b_view"]
+            # Apply Judge downgrade if both agents agree on lower level
+            if mas["final_risk_level"] != flag.risk_level:
+                section.risk_level = mas["final_risk_level"]
+
         sections.append(section)
 
     if return_mode:
