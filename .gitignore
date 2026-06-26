@@ -24,3 +24,12 @@ build/
 
 # Logs
 *.log
+
+# 敏感檔案
+*.rdp
+公司文件/
+相關文獻與來源/*.pdf
+專案.docx
+系統架構圖*.png
+image.png
+Gemini_Generated_Image*.png
