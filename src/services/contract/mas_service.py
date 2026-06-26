@@ -11,10 +11,37 @@ import concurrent.futures
 import json
 import logging
 import os
+import re
 from dataclasses import dataclass
+from pathlib import Path
 from typing import Optional
 
 from .schemas import RiskFlag, RISK_CODES
+
+
+def _load_skill_section(skill_path: str, section_header: str) -> str:
+    """Extract a named ## section from a skill file. Returns empty string on any failure."""
+    try:
+        content = Path(skill_path).read_text(encoding="utf-8")
+        start = content.find(f"## {section_header}")
+        if start == -1:
+            return ""
+        next_section = content.find("\n## ", start + 1)
+        return content[start:next_section if next_section != -1 else len(content)].strip()
+    except Exception:
+        return ""
+
+
+_SKILLS_DIR = Path(__file__).resolve().parents[3] / ".claude" / "skills"
+
+_SKILL_AGENT_A = _load_skill_section(
+    str(_SKILLS_DIR / "contract-risk-analysis.md"),
+    "MAS Agent A 知識庫（嚴格審查員）",
+)
+_SKILL_AGENT_B = _load_skill_section(
+    str(_SKILLS_DIR / "negotiation-strategy.md"),
+    "MAS Agent B 知識庫（平衡審查員）",
+)
 
 
 @dataclass
@@ -28,22 +55,26 @@ AGENT_A_SYSTEM = """你是極度保守的甲方法律顧問，專門在合約談
 你的任務：評估規則引擎標記的條款風險，從最壞情況出發判斷風險等級。
 原則：寧可高估風險，不可低估——一旦遺漏高風險條款，公司可能承受重大損失。
 
+{skill_a}
+
 輸出格式（JSON，只輸出 JSON，不加其他說明）：
-{
+{{
   "agreed_level": "high 或 medium 或 low",
   "reasoning": "一句話說明你的判斷依據，聚焦最壞情況或潛在損失"
-}"""
+}}""".format(skill_a=_SKILL_AGENT_A or "（知識庫未載入，依訓練知識判斷）")
 
 AGENT_B_SYSTEM = """你是促成交易的商務法務顧問，熟悉台灣 SaaS / IT 採購合約業界慣例。
 
 你的任務：評估規則引擎標記的條款風險，與市場行情比較後判斷實際風險等級。
 原則：若條款雖有偏差但符合業界常見做法，應如實反映為 medium 或 low，避免過度防守阻礙交易。
 
+{skill_b}
+
 輸出格式（JSON，只輸出 JSON，不加其他說明）：
-{
+{{
   "agreed_level": "high 或 medium 或 low",
   "reasoning": "一句話說明你的判斷依據，聚焦業界慣例比較或實際商業影響"
-}"""
+}}""".format(skill_b=_SKILL_AGENT_B or "（知識庫未載入，依訓練知識判斷）")
 
 
 def _build_agent_prompt(flag: RiskFlag) -> str:
