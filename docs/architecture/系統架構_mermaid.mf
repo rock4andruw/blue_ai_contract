@@ -1,0 +1,99 @@
+%%{init: {"theme": "base","themeVariables": {"background": "#050816","primaryColor": "#0b1220","primaryTextColor": "#e6f1ff","primaryBorderColor": "#22d3ee","lineColor": "#5eead4","secondaryColor": "#101a2f","tertiaryColor": "#0f172a","fontFamily": "'Noto Sans TC', 'Microsoft JhengHei', 'PingFang TC', sans-serif","fontSize": "15px"},"flowchart": {"htmlLabels": true,"curve": "basis","nodeSpacing": 36,"rankSpacing": 46}}}%%
+
+flowchart LR
+
+USER["👤 使用者<br/>法務 / PM / 業務"]
+
+subgraph P1["🟢 Phase 1 — MVP（已完成）"]
+    direction TB
+    UI["🖥 Demo UI<br/>上傳 / 範例模式 v2–v5"]
+    API["🔌 FastAPI<br/>POST /compare · GET /example · GET /health"]
+    PIPE["⚙️ 核心管道<br/>Parser → Align → Diff → Risk(15) → LLM → Report"]
+    STORE["💾 本地資料<br/>sla_contract v1–v5 · gold_annotations(38) · 公司文件"]
+    EVAL["📐 指標<br/>High-risk Recall 100% · Overall 61%"]
+    UI --> API --> PIPE
+    STORE --> PIPE
+    EVAL --> PIPE
+end
+
+subgraph P15["🟡 Phase 1.5 — MAS 雙重驗證（已完成）"]
+    direction TB
+    SK1["📋 contract-risk-analysis.md<br/>Agent A 知識庫：最壞情況場景表"]
+    SK2["💬 negotiation-strategy.md<br/>Agent B 知識庫：台灣業界慣例表"]
+    MA["🔴 Agent A（嚴格）<br/>極度保守買方法律顧問<br/>最壞情況視角"]
+    MB["🟡 Agent B（平衡）<br/>促成交易商務法務<br/>台灣 SaaS 業界慣例視角"]
+    JG["⚖️ Judge 矩陣<br/>gap=0/1 → ✓ confirmed<br/>gap=2 → ⚠ pending"]
+    SK1 --> MA
+    SK2 --> MB
+    MA --> JG
+    MB --> JG
+end
+
+subgraph P2["🔵 Phase 2 — 能力擴展（3–6 月）"]
+    direction TB
+    PG["🗄 PostgreSQL + pgvector<br/>標準條款庫 · 語意檢索"]
+    LAW["⚖️ Taiwan Law MCP<br/>個資法 / 民法 條文引用"]
+    O365["📧 Office 365 MCP<br/>Teams 通知 · SharePoint 歸檔"]
+    CTYPE["📄 合約類型擴展<br/>NDA · 採購合約 · LOI"]
+    HETERO["🎭 異質模型 MAS<br/>Gemini Agent A + Claude Agent B<br/>消除 Echo Chamber"]
+end
+
+subgraph P3["🟣 Phase 3 — 企業級產品化（6–12 月）"]
+    direction TB
+    MAS["🎭 Multi-Agent System<br/>Orchestrator / Risk / Retrieval / LLM / Report / Notify"]
+    ENT["🔐 企業功能<br/>RBAC 三層權限 · History Agent · 週報整併"]
+    MAS --> ENT
+end
+
+subgraph EXT["☁️ 外部服務"]
+    direction TB
+    CLAUDE["🟠 Claude API<br/>claude-sonnet-4-6"]
+    GEMINI["🔵 Gemini API<br/>gemini-3.1-flash-lite"]
+    AZURE["🔷 Azure Cloud<br/>Blob Storage · AD 認證 · App Insights"]
+end
+
+USER --> UI
+JG -.->|MAS 標籤注入| PIPE
+PG -.->|語意檢索增強| PIPE
+LAW -.->|法條引用| PIPE
+O365 -.->|自動通知| PIPE
+MAS -.->|MAS 接管| PIPE
+PIPE --> CLAUDE
+PIPE --> GEMINI
+PIPE --> JG
+AZURE -.->|正式環境| STORE
+
+classDef done fill:#07131f,stroke:#00e5ff,stroke-width:2px,color:#e6faff;
+classDef inprog fill:#1a1020,stroke:#ff4ecd,stroke-width:2px,color:#fff1fb;
+classDef plan fill:#081422,stroke:#38bdf8,stroke-width:2px,color:#eff6ff;
+classDef ent fill:#140d22,stroke:#a855f7,stroke-width:2px,color:#f5f3ff;
+classDef ext fill:#0a1020,stroke:#7c3aed,stroke-width:2px,color:#eef2ff;
+classDef core fill:#06111b,stroke:#0f766e,stroke-width:1.5px,color:#ecfeff;
+classDef skill fill:#1c1328,stroke:#f472b6,stroke-width:1.5px,color:#fdf2f8;
+classDef agent_a fill:#1f0a0a,stroke:#f87171,stroke-width:1.8px,color:#fff1f2;
+classDef agent_b fill:#1a1500,stroke:#fbbf24,stroke-width:1.8px,color:#fffbeb;
+classDef judge fill:#071a0f,stroke:#34d399,stroke-width:2px,color:#ecfdf5;
+classDef db fill:#0f1f1c,stroke:#34d399,stroke-width:1.5px,color:#ecfdf5;
+classDef mcp fill:#0f1a26,stroke:#60a5fa,stroke-width:1.5px,color:#eff6ff;
+classDef ctype fill:#161124,stroke:#c026d3,stroke-width:1.5px,color:#faf5ff;
+classDef hetero fill:#111827,stroke:#fb7185,stroke-width:1.8px,color:#fff1f2;
+classDef entf fill:#18130b,stroke:#f59e0b,stroke-width:1.5px,color:#fffbeb;
+classDef extc fill:#0b1324,stroke:#818cf8,stroke-width:1.5px,color:#eef2ff;
+
+class P1 done;
+class P15 inprog;
+class P2 plan;
+class P3 ent;
+class EXT ext;
+class PIPE core;
+class SK1,SK2 skill;
+class MA agent_a;
+class MB agent_b;
+class JG judge;
+class PG db;
+class LAW,O365 mcp;
+class CTYPE ctype;
+class HETERO hetero;
+class MAS hetero;
+class ENT entf;
+class CLAUDE,GEMINI,AZURE extc;
