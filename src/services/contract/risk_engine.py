@@ -13,23 +13,116 @@ from .schemas import DiffItem, RiskFlag, RiskLevel, RiskDirection
 # Individual rule functions
 # ------------------------------------------------------------------
 
+_CN_DIGITS = {"零": 0, "一": 1, "二": 2, "三": 3, "四": 4, "五": 5,
+              "六": 6, "七": 7, "八": 8, "九": 9, "十": 10}
+_FRACTION_BASE = {"千分": 1000, "百分": 100, "萬分": 10000}
+
+
+def _cn_num_to_int(s: str) -> Optional[int]:
+    """Convert a simple Chinese numeral (0-99) to int. e.g. 三→3, 二十三→23, 十→10."""
+    if not s:
+        return None
+    if s.isdigit():
+        return int(s)
+    if s == "十":
+        return 10
+    if "十" in s:
+        tens_str, _, units_str = s.partition("十")
+        tens = _CN_DIGITS.get(tens_str, 1) if tens_str else 1
+        units = _CN_DIGITS.get(units_str, 0) if units_str else 0
+        return tens * 10 + units
+    return _CN_DIGITS.get(s)
+
+
 def _extract_percentage(text: str) -> Optional[float]:
-    m = re.search(r'(\d+(?:\.\d+)?)\s*%', text)
-    return float(m.group(1)) if m else None
+    """Extract a percentage from Arabic (12.5%／12.5％) or Chinese fraction
+    notation (千分之一/百分之三十/萬分之五).
 
+    千分之一 vs "0.3%" are semantically incomparable as raw strings —
+    normalize both to the same 0-100 scale so numeric rules can compare
+    across formats (千分之一 = 0.1%, distinct from 0.3%). Contracts also
+    mix full-width ％ (U+FF05) with half-width %, both are accepted.
 
-def _extract_hours(text: str) -> Optional[float]:
-    """Extract hour value from text like '4 小時' or '2 個工作日' (1 day = 8h)."""
-    m = re.search(r'(\d+(?:\.\d+)?)\s*小時', text)
+    NOTE: this grabs the *first* percentage found in the text. Clauses that
+    state both a rate and a cap in one sentence (e.g. "每日 0.3% 違約金，
+    總額以 30% 為上限") need a context-scoped extractor instead — see
+    _extract_rate_percentage / _extract_cap_percentage.
+    """
+    m = re.search(r'(\d+(?:\.\d+)?)\s*[%％]', text)
     if m:
         return float(m.group(1))
-    m = re.search(r'(\d+(?:\.\d+)?)\s*個工作日', text)
+    m = re.search(r'(千分|百分|萬分)之([零一二三四五六七八九十\d]+)', text)
     if m:
-        return float(m.group(1)) * 8
-    m = re.search(r'(\d+(?:\.\d+)?)\s*分鐘', text)
-    if m:
-        return float(m.group(1)) / 60
+        base = _FRACTION_BASE[m.group(1)]
+        num = _cn_num_to_int(m.group(2))
+        if num is not None:
+            return num / base * 100
     return None
+
+
+def _extract_rate_percentage(text: str) -> Optional[float]:
+    """Extract a penalty-rate percentage scoped to '...% 之懲罰性違約金'
+    style phrasing, distinct from a liability-cap percentage that may
+    appear later in the same clause (see _extract_cap_percentage).
+    """
+    m = re.search(r'(\d+(?:\.\d+)?)\s*[%％]\s*之?(?:懲罰性)?違約金', text)
+    if m:
+        return float(m.group(1))
+    m = re.search(r'(千分|百分|萬分)之([零一二三四五六七八九十\d]+)\s*之?(?:懲罰性)?違約金', text)
+    if m:
+        base = _FRACTION_BASE[m.group(1)]
+        num = _cn_num_to_int(m.group(2))
+        if num is not None:
+            return num / base * 100
+    return None
+
+
+def _extract_cap_percentage(text: str) -> Optional[float]:
+    """Extract a liability-cap percentage scoped to '...% 為上限' / '不得
+    超過...%' style phrasing, distinct from a penalty-rate percentage that
+    may appear earlier in the same clause (see _extract_rate_percentage).
+    """
+    m = re.search(r'(\d+(?:\.\d+)?)\s*[%％]\s*為上限', text)
+    if m:
+        return float(m.group(1))
+    m = re.search(r'(千分|百分|萬分)之([零一二三四五六七八九十\d]+)\s*為上限', text)
+    if m:
+        base = _FRACTION_BASE[m.group(1)]
+        num = _cn_num_to_int(m.group(2))
+        if num is not None:
+            return num / base * 100
+    m = re.search(r'(?:不得超過|不超過|不逾)[^%％為]{0,20}?(\d+(?:\.\d+)?)\s*[%％]', text)
+    if m:
+        return float(m.group(1))
+    m = re.search(r'(?:不得超過|不超過|不逾)[^%％為]{0,20}?(千分|百分|萬分)之([零一二三四五六七八九十\d]+)', text)
+    if m:
+        base = _FRACTION_BASE[m.group(1)]
+        num = _cn_num_to_int(m.group(2))
+        if num is not None:
+            return num / base * 100
+    return None
+
+
+def _extract_scoped_hours(text: str, keyword: str) -> Optional[float]:
+    """Extract a duration (normalized to hours) tied to a specific SLA
+    commitment keyword (回覆/到場/修復), scoped separately from other
+    duration commitments stated in the same sentence.
+
+    e.g. "4小時內回覆、於4小時內到場，並須於2日內完成修復" states three
+    independent commitments — a single generic extractor can't tell them
+    apart, so a change to just the repair time would be silently missed.
+    """
+    m = re.search(rf'(\d+(?:\.\d+)?)\s*(小時|個工作日|[日天]|分鐘)內?.{{0,4}}?{re.escape(keyword)}', text)
+    if not m:
+        return None
+    value, unit = float(m.group(1)), m.group(2)
+    if unit == "小時":
+        return value
+    if unit == "個工作日":
+        return value * 8
+    if unit in ("日", "天"):
+        return value * 24
+    return value / 60  # 分鐘
 
 
 def _extract_months(text: str) -> Optional[float]:
@@ -70,51 +163,75 @@ def rule_sla_degrade(diff: DiffItem) -> Optional[RiskFlag]:
     return None
 
 
+# 一句條款常同時承諾多個時限（回覆／到場／修復），必須各自獨立比對，
+# 否則像「回覆4小時、到場4小時、修復2日」這種句子，只有「修復」時間被
+# 拉長時，會被誤判成沒有變化（因為第一個抓到的「4小時」沒變）。
+_RESPONSE_TIME_COMMITMENTS = [
+    ("回覆", "回應/回覆時間"),
+    ("回應", "回應/回覆時間"),
+    ("到場", "到場時間"),
+    ("修復", "修復/處理時間"),
+    ("處理", "修復/處理時間"),
+]
+
+
 def rule_response_time_extended(diff: DiffItem) -> Optional[RiskFlag]:
-    """回應時間或修復時間拉長。"""
+    """回應／到場／修復時間拉長（三種時限各自獨立比對）。"""
     if diff.change_type != "modified":
         return None
-    keywords = ["回應", "修復", "處理", "response", "repair", "resolve"]
+    keywords = ["回應", "回覆", "到場", "修復", "處理", "response", "repair", "resolve"]
     if not any(k in diff.old_text for k in keywords):
         return None
-    old_h = _extract_hours(diff.old_text)
-    new_h = _extract_hours(diff.new_text)
-    if old_h is None or new_h is None:
-        return None
-    if new_h > old_h:
-        ratio = new_h / old_h
-        # P1 回應 30min→2h 是 gold=high；修復 4h→8h 是 gold=high
-        # 其他延長為 medium/low
-        level = "high" if (ratio >= 4 or (old_h <= 1 and ratio >= 2)) else "medium"
-        return RiskFlag(
-            clause_id=diff.clause_id,
-            risk_code="RISK_RESPONSE_TIME_EXTENDED",
-            risk_level=level,
-            risk_direction="adverse",
-            trigger_reason=f"時間從 {old_h}h 延長為 {new_h}h（{ratio:.1f} 倍）",
-            old_text=diff.old_text,
-            new_text=diff.new_text,
-            change_type=diff.change_type,
-        )
+
+    checked_labels = set()
+    for kw, label in _RESPONSE_TIME_COMMITMENTS:
+        if label in checked_labels:
+            continue
+        old_h = _extract_scoped_hours(diff.old_text, kw)
+        new_h = _extract_scoped_hours(diff.new_text, kw)
+        if old_h is None or new_h is None or old_h <= 0:
+            continue
+        checked_labels.add(label)
+        if new_h > old_h:
+            ratio = new_h / old_h
+            # P1 回應 30min→2h 是 gold=high；修復 4h→8h 是 gold=high
+            level = "high" if (ratio >= 4 or (old_h <= 1 and ratio >= 2)) else "medium"
+            return RiskFlag(
+                clause_id=diff.clause_id,
+                risk_code="RISK_RESPONSE_TIME_EXTENDED",
+                risk_level=level,
+                risk_direction="adverse",
+                trigger_reason=f"{label}由 {old_h:g}h 延長為 {new_h:g}h（{ratio:.1f} 倍）",
+                old_text=diff.old_text,
+                new_text=diff.new_text,
+                change_type=diff.change_type,
+            )
+
+    # 沒有情境限定的 fallback：泛用抽取（不管數字跟哪個關鍵字有沒有關聯）
+    # 曾經造成假警報——例如付款條款裡的「發票處理」命中「處理」關鍵字，
+    # 跟旁邊完全無關的月結天數（1日→60日）湊在一起被誤判成回應時間拉長
+    # 60 倍。抓不到情境限定的時限就不判，交給 Verification Agent 語意判斷。
     return None
 
 
 def rule_penalty_weakened(diff: DiffItem) -> Optional[RiskFlag]:
-    """違約折讓比例降低或門檻放寬。"""
+    """違約折讓比例或違約金費率降低。"""
     if diff.change_type != "modified":
         return None
-    keywords = ["折讓", "服務費", "扣款", "penalty", "credit"]
+    keywords = ["折讓", "服務費", "扣款", "penalty", "credit", "違約金", "罰款", "懲罰性"]
     if not any(k in diff.old_text for k in keywords):
         return None
-    old_pct = _extract_percentage(diff.old_text)
-    new_pct = _extract_percentage(diff.new_text)
+    # 優先用情境限定的費率抽取（區分於責任上限百分比），避免同句中的
+    # 上限數字被誤當成費率比較（見 _extract_rate_percentage）。
+    old_pct = _extract_rate_percentage(diff.old_text) or _extract_percentage(diff.old_text)
+    new_pct = _extract_rate_percentage(diff.new_text) or _extract_percentage(diff.new_text)
     if old_pct is not None and new_pct is not None and new_pct < old_pct:
         return RiskFlag(
             clause_id=diff.clause_id,
             risk_code="RISK_PENALTY_WEAKENED",
             risk_level="medium",
             risk_direction="adverse",
-            trigger_reason=f"折讓比例由 {old_pct}% 降為 {new_pct}%",
+            trigger_reason=f"違約金/折讓比例由 {old_pct:g}% 降為 {new_pct:g}%",
             old_text=diff.old_text,
             new_text=diff.new_text,
             change_type=diff.change_type,
@@ -166,6 +283,40 @@ def rule_liability_cap_changed(diff: DiffItem) -> Optional[RiskFlag]:
                 change_type=diff.change_type,
             )
         if has_adverse:
+            # 情境限定抽取責任上限的百分比（區分於同句中可能存在的違約金
+            # 費率百分比），只有上限數值真的變小才判定為此類風險；
+            # 上限數值不變（只是句子裡剛好也出現「上限」字樣）不算，
+            # 讓其他規則（如 rule_penalty_weakened）去抓真正變化的部分。
+            old_cap = _extract_cap_percentage(diff.old_text)
+            new_cap = _extract_cap_percentage(diff.new_text)
+            if old_cap is not None and new_cap is not None:
+                if new_cap < old_cap:
+                    return RiskFlag(
+                        clause_id=diff.clause_id,
+                        risk_code="RISK_LIABILITY_CAP_CHANGED",
+                        risk_level="high",
+                        risk_direction="adverse",
+                        trigger_reason=f"責任上限比例由 {old_cap:g}% 降為 {new_cap:g}%",
+                        old_text=diff.old_text,
+                        new_text=diff.new_text,
+                        change_type=diff.change_type,
+                    )
+                return None  # 上限數值不變或提高，非此規則要抓的變化
+
+            has_adverse_old = any(k in diff.old_text for k in adverse_keywords)
+            if not has_adverse_old:
+                return RiskFlag(
+                    clause_id=diff.clause_id,
+                    risk_code="RISK_LIABILITY_CAP_CHANGED",
+                    risk_level="high",
+                    risk_direction="adverse",
+                    trigger_reason="新增責任上限相關條款",
+                    old_text=diff.old_text,
+                    new_text=diff.new_text,
+                    change_type=diff.change_type,
+                )
+            # 兩邊都有上限相關文字，但抓不到可比較的百分比（例如上限用
+            # 絕對金額表示）——保守起見仍標記，避免漏判。
             return RiskFlag(
                 clause_id=diff.clause_id,
                 risk_code="RISK_LIABILITY_CAP_CHANGED",

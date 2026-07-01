@@ -130,5 +130,6 @@ RISK_CODES = {
     "RISK_LIABILITY_DIRECTION_REVERSED":  "違約賠償責任方向反轉",
     "RISK_CONFIDENTIALITY_SCOPE_CHANGED": "保密義務範圍改變",
     "RISK_OTHER":                         "其他變更",
+    "RISK_AGENT_AUDITED":                 "Verification Agent 補漏偵測",
     "none":                               "無風險",
 }

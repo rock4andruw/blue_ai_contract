@@ -116,13 +116,17 @@ def to_markdown(report: ComparisonReport) -> str:
         lines.append(f"**可接受**：其他 {len(report.acceptable)} 處行政性變更")
 
     lines.append("\n---\n")
+    agent_count = sum(1 for f in report.all_risk_flags if f.risk_code == "RISK_AGENT_AUDITED")
+    engine_count = len(report.all_risk_flags) - agent_count
     lines.append("## 完整風險旗標\n")
-    lines.append("| 條款 | 風險等級 | 風險類型 | 觸發原因 |")
-    lines.append("| --- | --- | --- | --- |")
+    lines.append(f"規則引擎偵測：{engine_count} 項　｜　⚠ Verification Agent 補漏：{agent_count} 項\n")
+    lines.append("| 條款 | 風險等級 | 來源 | 風險類型 | 觸發原因 |")
+    lines.append("| --- | --- | --- | --- | --- |")
     for f in report.all_risk_flags:
         emoji = LEVEL_EMOJI.get(f.risk_level, "")
         risk_name = RISK_CODES.get(f.risk_code, f.risk_code)
-        lines.append(f"| {f.clause_id} | {emoji} {LEVEL_ZH.get(f.risk_level,'')} | {risk_name} | {f.trigger_reason} |")
+        source = "⚠ Agent 補漏" if f.risk_code == "RISK_AGENT_AUDITED" else "✓ 規則引擎"
+        lines.append(f"| {f.clause_id} | {emoji} {LEVEL_ZH.get(f.risk_level,'')} | {source} | {risk_name} | {f.trigger_reason} |")
 
     lines.append("\n---\n")
     lines.append("_本報告由 AI 輔助生成，所有分析僅供參考，最終決策需由法務人員確認。_")

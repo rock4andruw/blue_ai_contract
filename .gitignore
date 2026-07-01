@@ -33,3 +33,7 @@ build/
 系統架構圖*.png
 image.png
 Gemini_Generated_Image*.png
+
+# 真實公司合約與衍生的敏感內容擷取（含條款文字、金額）
+pic_contract/
+candidate_rules.jsonl

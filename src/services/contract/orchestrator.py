@@ -9,6 +9,7 @@ from .parser import ContractParser
 from .alignment import ContractAligner
 from .diff_engine import DiffEngine
 from .risk_engine import RiskEngine
+from .verifier import VerificationAgent, cross_check_risks
 from .llm_service import generate_sections
 from .report_generator import build_report, to_markdown
 
@@ -40,12 +41,18 @@ def compare(
     diff_engine = DiffEngine()
     diffs = diff_engine.compute_diffs(original_doc.clauses, revised_doc.clauses, alignment)
 
-    # Step 4: Risk
+    # Step 4: Risk (Rule Engine — Layer 1)
     risk_engine = RiskEngine()
     flags = risk_engine.analyze(diffs)
 
+    # Step 4b: Verification Agent (Layer 2 — LLM semantic sweep)
+    agent = VerificationAgent()
+    agent_flags = agent.audit_diffs(diffs)
+    contract_pair = f"{Path(original_path).name} vs {Path(revised_path).name}"
+    flags = cross_check_risks(flags, agent_flags, diffs, contract_pair=contract_pair)
+
     # Step 5: LLM summary (uses template fallback if no API key)
-    sections = generate_sections(flags, api_key=key or None, max_sections=max_sections)
+    sections = generate_sections(flags, api_key=key or None, max_medium=max_sections)
 
     # Step 6: Report
     report = build_report(

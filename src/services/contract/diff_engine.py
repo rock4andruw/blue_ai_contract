@@ -46,25 +46,33 @@ class DiffEngine:
                     match_method=block.method,
                 ))
             elif old is not None and new is None:
-                if old.clause_number:
-                    diffs.append(DiffItem(
-                        clause_id=old.clause_number,
-                        change_type="deleted",
-                        old_text=old.content.strip(),
-                        new_text="",
-                        confidence=block.confidence,
-                        match_method=block.method,
-                    ))
+                clause_id = (
+                    old.clause_number
+                    or (old.title[:15] if old.title and old.title != "未命名條款" else None)
+                    or "未知條款"
+                )
+                diffs.append(DiffItem(
+                    clause_id=clause_id,
+                    change_type="deleted",
+                    old_text=old.content.strip(),
+                    new_text="",
+                    confidence=block.confidence,
+                    match_method=block.method,
+                ))
             elif old is None and new is not None:
-                if new.clause_number:
-                    diffs.append(DiffItem(
-                        clause_id=new.clause_number,
-                        change_type="inserted",
-                        old_text="",
-                        new_text=new.content.strip(),
-                        confidence=block.confidence,
-                        match_method=block.method,
-                    ))
+                clause_id = (
+                    new.clause_number
+                    or (new.title[:15] if new.title and new.title != "未命名條款" else None)
+                    or "未知條款"
+                )
+                diffs.append(DiffItem(
+                    clause_id=clause_id,
+                    change_type="inserted",
+                    old_text="",
+                    new_text=new.content.strip(),
+                    confidence=block.confidence,
+                    match_method=block.method,
+                ))
 
         return self._merge_renumbered(diffs)
 
