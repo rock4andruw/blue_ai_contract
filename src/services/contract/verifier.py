@@ -117,38 +117,50 @@ def log_candidate_rule(af: Dict[str, Any], contract_pair: str = "") -> None:
     except OSError as e:
         log.warning(f"candidate rule log write failed: {e}")
 
+def _load_skill_section(skill_path: str, section_header: str) -> str:
+    """Extract a named ## section from a skill file. Returns "" on any failure.
+
+    Plain text file read — no Claude Code dependency at runtime. Same
+    pattern as mas_service.py's _load_skill_section (kept as a separate
+    copy rather than a shared import to avoid cross-module coupling for a
+    ~10-line utility).
+    """
+    try:
+        content = Path(skill_path).read_text(encoding="utf-8")
+        start = content.find(f"## {section_header}")
+        if start == -1:
+            return ""
+        next_section = content.find("\n## ", start + 1)
+        return content[start:next_section if next_section != -1 else len(content)].strip()
+    except Exception:
+        return ""
+
+
+_SKILLS_DIR = Path(__file__).resolve().parents[3] / ".claude" / "skills"
+_SKILL_VERIFICATION_AGENT = _load_skill_section(
+    str(_SKILLS_DIR / "contract-risk-analysis.md"),
+    "Verification Agent 知識庫（語意補漏審查員）",
+)
+
 VERIFICATION_SYSTEM_PROMPT = """你是資深甲方法律顧問與合約審查專家。
 
 任務：
 審查以下合約條款的修改內容，找出對甲方（買方）不利的實質風險變更。
 
-評估重點：
-- SLA 可用率降低
-- 回應或修復時間拉長
-- 賠償上限縮水
-- 保護條款被刪除
-- 保密期縮短
-- 智財權移轉至乙方
-- 責任方向反轉
-- 不可抗力範圍擴大
-- 管轄地改變
-- 資料控制權喪失
-- 違約金費率或金額降低（特別注意：中文數字寫法如「千分之一」= 0.1%，「千分之三」= 0.3%，需與阿拉伯數字寫法作語意比較）
-
-忽略：純字詞修正、排版調整、對甲方有利的修改。
+{skill}
 
 必須輸出 JSON 陣列（不含任何說明文字，直接輸出 JSON）：
 [
-  {
+  {{
     "clause_id": "條文編號或標題",
     "risk_level": "high | medium | low",
     "trigger_reason": "修改差異與不利影響說明（需說明數值換算結果）",
     "evidence_text": "修改版中的關鍵句子"
-  }
+  }}
 ]
 
 若無任何風險，輸出空陣列：[]
-"""
+""".format(skill=_SKILL_VERIFICATION_AGENT or "評估重點：對甲方（買方）不利的實質風險變更，忽略純字詞修正與對甲方有利的修改。（知識庫未載入，依訓練知識判斷）")
 
 
 def _build_diff_prompt(diffs: List[DiffItem]) -> str:
