@@ -22,23 +22,31 @@ subgraph P1["🟢 Phase 1 — MVP（已完成）"]
     direction TB
 
     subgraph FRONT["前端（FRONT）"]
-        UI["🖥 Demo UI\nfrontend/demo.html\n上傳模式 / 範例模式 v2–v5"]
+        UI["🖥 Demo UI\nfrontend/demo.html\n上傳模式 / 範例模式 v2–v6"]
     end
 
     subgraph APIL["API 層（API）"]
-        API["🔌 FastAPI\nPOST /api/v1/contracts/compare\nGET /example/{v2-v5}\nPOST /api/v1/contracts/negotiate"]
+        API["🔌 FastAPI（threadpool 化）\nPOST /api/v1/contracts/compare\nGET /example/{v2-v6}\nPOST /api/v1/contracts/negotiate"]
     end
 
     subgraph PIPELINE["核心管道（PIPELINE）"]
         direction LR
-        PARSER["📄 Parser\nMD / PDF / DOCX\ntrack-change HTML 清理\npdfplumber · python-docx"]
+        PARSER["📄 Parser\nMD / PDF / DOCX（含表格交錯讀取）\ntrack-change HTML 清理\npdfplumber · python-docx"]
         ALIGN["🔗 Alignment\nLCS + 條款號比對\nNeedleman-Wunsch DP\n相似度後處理 ≥75%"]
         DIFF["🔀 Diff Engine\n新增 / 修改 / 刪除\nDiffItem 標準化輸出"]
         RISK["🛡 Risk Rule Engine（Layer 1）\n15 條規則 · pure Python\n預定義類別 100% recall\nrisk_code · risk_level · trigger_reason"]
-        VA["🔍 Verification Agent（Layer 2）\nLLM 語意補漏，讀 Diff 不讀全文\n交叉核對：✓雙軌確認／✓規則觸發／⚠補漏警示\n候選規則紀錄 candidate_rules.jsonl（不自動生規則）"]
+        VA["🔍 Verification Agent（Layer 2）\nLLM 語意補漏，讀 Diff 不讀全文\n交叉核對 key = (clause_id, 風險類別)\n候選規則紀錄 candidate_rules.jsonl（不自動生規則）"]
         LLM["🤖 LLM Service\nGemini 3.1 Flash Lite（主）\nClaude Sonnet 4.6 / Haiku 4.5（備）\nTemplate fallback（無 key 可跑）"]
         RPT["📊 Report Generator\nMarkdown 報告輸出\n審閱建議分層\nMAS 標籤整合"]
         PARSER --> ALIGN --> DIFF --> RISK --> VA --> LLM --> RPT
+    end
+
+    subgraph L4["⚖️ Layer 4：協商建議依據檢索（已接入，2026-07-02）"]
+        direction LR
+        LAWCACHE["📖 legal_citations_cache.json\nmcp-taiwan-legal-db 離線查回\n真實民法／民訴法條文\n同步讀檔，無即時網路依賴"]
+        PRECEDENT["🧭 precedent_corpus.py\n10 筆合成先例（緊扣 v2-v6）\ngemini-embedding-2 真實向量\n本地 cosine similarity"]
+        LAWCACHE --> LLM
+        PRECEDENT --> LLM
     end
 
     subgraph STORE["本地資料"]
@@ -72,14 +80,13 @@ subgraph EXT["☁️ 外部服務（External Cloud）"]
     AZURE["🔷 Azure\nBlob Storage · AD 認證\nApp Insights 監控"]
 end
 
-subgraph P2["🔵 Phase 2 — 能力擴展（3–6 月）"]
+subgraph P2["🔵 Phase 2 — 能力擴展（3–6 月，Layer 4 已提前完成，其餘未做）"]
     direction LR
-    subgraph P2L["Layer 4：法律依據檢索（RAG）"]
-        LAW["⚖️ Taiwan Law MCP\n即時查詢民法／個資法\n補上協商建議的法條依據"]
+    subgraph P2L["MCP 整合（未做）"]
         O365["📧 Office 365 MCP\nTeams 通知\nSharePoint 歸檔"]
     end
-    subgraph P2R["Phase 2 擴展項目"]
-        PG["🗄 PostgreSQL + pgvector\nCUAD／內部案例語意檢索\n補上協商建議的先例依據"]
+    subgraph P2R["Phase 2 擴展項目（未做）"]
+        REALDB["🗄 真實 PostgreSQL + pgvector\n取代目前本地 JSON + cosine\n真實企業案例庫（非合成語料）"]
         CTYPE["📄 合約類型擴展\nNDA · 採購合約 · LOI\n合約範本庫 CONTRACT_EXT"]
         HETERO["🎭 異質模型 MAS\nGemini Agent A\n+ Claude Agent B\n消除 Echo Chamber"]
     end
@@ -111,9 +118,8 @@ LLM --> CLAUDE
 MA --> GEMINI
 MB --> GEMINI
 AZURE -.->|正式環境部署| D1
-PG -.->|Layer 4：協商建議先例檢索| LLM
-LAW -.->|Layer 4：協商建議法條引用| LLM
 O365 -.->|Phase 2：自動通知| RPT
+REALDB -.->|Phase 2：取代本地合成語料| PRECEDENT
 HETERO -.->|Phase 2：取代同質 MAS| JG
 
 classDef done fill:#07131f,stroke:#00e5ff,stroke-width:2px,color:#e6faff;
@@ -135,21 +141,23 @@ classDef verify fill:#06111b,stroke:#facc15,stroke-width:2px,color:#fefce8;
 
 class P1 done;
 class P15 done;
+class L4 done;
 class P2 plan;
 class P3 ent;
 class EXT ext;
 class PRINCIPLE principle;
 class PARSER,ALIGN,DIFF,RISK,LLM,RPT pipeline;
 class VA verify;
+class LAWCACHE,PRECEDENT verify;
 class SK1,SK2,SK3 skill;
 class MA agent_a;
 class MB agent_b;
 class JG judge;
 class D1,D2,D3,EVAL,E1 store;
 class CLAUDE,GEMINI,AZURE extc;
-class LAW,O365 mcp;
+class O365 mcp;
 class HETERO hetero;
-class PG store;
+class REALDB,CTYPE store;
 class ORCH,RAGENT,RETAG,LLAG,NOTIF agent_a;
 class E2,E3,E4 entf;
 
