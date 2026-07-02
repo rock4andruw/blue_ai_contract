@@ -72,6 +72,8 @@ def compare(
 
 def main():
     import argparse
+    from dotenv import load_dotenv
+    load_dotenv()  # CLI 入口跟 src/api/main.py 一樣需要載入 .env，否則讀不到 API key
     parser = argparse.ArgumentParser(description="合約智能比對助理")
     parser.add_argument("original", help="原始合約路徑（PDF / DOCX / MD）")
     parser.add_argument("revised", help="修訂合約路徑（PDF / DOCX / MD）")
