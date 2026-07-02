@@ -929,7 +929,7 @@
     <!-- Example tab -->
     <div id="tab-example" class="tab-panel" role="tabpanel" aria-labelledby="tab-btn-example">
       <div style="font-size:13px;color:var(--ink-light);margin-bottom:14px;">
-        以「SLA-like Base Contract v1」為基準，選擇修訂版本：
+        選擇範例合約組合（v2-v5 以「SLA-like Base Contract v1」為基準；v6 為獨立的軟體維護合約範例）：
       </div>
       <div class="example-grid">
         <button type="button" class="example-btn" onclick="runExample('v2')">
@@ -951,6 +951,11 @@
           <div class="badge badge-yellow">中風險</div>
           <div style="font-weight:700;">v5 終止偏甲方</div>
           <div class="desc">終止條件改變<br>通知期調整</div>
+        </button>
+        <button type="button" class="example-btn" onclick="runExample('v6')">
+          <div class="badge badge-red">高風險</div>
+          <div style="font-weight:700;">v6 違約金費率</div>
+          <div class="desc">中文分數費率變化<br>Verification Agent 補漏</div>
         </button>
       </div>
     </div>

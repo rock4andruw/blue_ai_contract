@@ -33,6 +33,13 @@ EXAMPLE_CONTRACTS = {
     "v3": _BASE_DIR / "sla_contract" / "sla_v3_liability.md",
     "v4": _BASE_DIR / "sla_contract" / "sla_v4_remove_protection.md",
     "v5": _BASE_DIR / "sla_contract" / "sla_v5_termination.md",
+    "v6": _BASE_DIR / "sla_contract" / "maintenance_v6_penalty_rate.md",
+}
+
+# v6 是獨立的合成軟體維護合約（重現真實合約發現的「千分之一 vs 0.3%」費率格式問題），
+# 不是 v1（SLA 協議書）的修訂版，需要自己的原始版，不能沿用 v1 當基準。
+EXAMPLE_BASE_OVERRIDE = {
+    "v6": _BASE_DIR / "sla_contract" / "maintenance_v6_base.md",
 }
 
 
@@ -188,20 +195,24 @@ async def compare_contracts(
 @router.get(
     "/compare/example/{example_id}",
     response_model=CompareResponse,
-    summary="範例模式（v2/v3/v4/v5）",
+    summary="範例模式（v2/v3/v4/v5/v6）",
 )
 async def compare_example(
     example_id: str,
     api_key: Optional[str] = Depends(_get_api_key),
 ):
-    """使用內建範例合約進行比對，example_id 為 v2 / v3 / v4 / v5。"""
+    """使用內建範例合約進行比對，example_id 為 v2 / v3 / v4 / v5 / v6。
+
+    v2-v5 皆為「SLA-like Base Contract v1」的修訂版；v6 是獨立的合成軟體維護
+    合約（見 EXAMPLE_BASE_OVERRIDE），有自己的原始版，不與 v1 共用基準。
+    """
     if example_id not in EXAMPLE_CONTRACTS:
         raise HTTPException(
             status_code=404,
             detail=f"範例不存在，可用值：{list(EXAMPLE_CONTRACTS.keys())[1:]}",
         )
 
-    orig_path = str(EXAMPLE_CONTRACTS["v1"])
+    orig_path = str(EXAMPLE_BASE_OVERRIDE.get(example_id, EXAMPLE_CONTRACTS["v1"]))
     rev_path = str(EXAMPLE_CONTRACTS[example_id])
 
     if not Path(orig_path).exists() or not Path(rev_path).exists():
@@ -211,7 +222,7 @@ async def compare_example(
     return _build_response(
         original_path=orig_path,
         revised_path=rev_path,
-        original_filename="SLA-like Base Contract v1.md",
+        original_filename=Path(orig_path).name,
         revised_filename=Path(rev_path).name,
         api_key=api_key,
         start_time=start,
