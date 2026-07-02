@@ -42,9 +42,10 @@
 ### 立即待辦（2026-07-02 新增）
 
 - [x] **修復重大缺口：API 沒有接 Verification Agent**：`src/api/contracts.py` 的 `_build_response()` 原本自己兜 Parser→Alignment→Diff→RiskEngine→LLM，完全沒呼叫 `verifier.py`——代表 Demo UI（`/demo`，含上傳模式與範例模式）原本看不到今天做的核心功能，只有終端機直接跑 `orchestrator.compare()` 才有。已修復：`contracts.py` 接上 `VerificationAgent`/`cross_check_risks`，`schemas_api.py` 的 `RiskFlagItem` 新增 `source` 欄位，`frontend/demo.html` 完整風險旗標表格加「來源」欄顯示 ✓ 規則引擎／⚠ Agent 補漏。用 Playwright 實際開瀏覽器跑過 v4 範例，畫面正確顯示（3 項 Agent 補漏 + 9 項規則引擎，來源標籤清楚區分），無 console 錯誤。**這幾個檔案尚未 commit。**
-- [ ] **Commit 所有尚未進版的改動**：`PROJECT_PLAN.md`（CLM 定位、Layer 4 路線圖、簡報收斂原則）、`docs/architecture/系統架構_mermaid.md`（Verification Agent 節點、pgvector 接線修正）、`src/api/contracts.py`、`src/api/schemas_api.py`、`frontend/demo.html`（以上為 API/UI 接上 Verification Agent 的修復）
-- [ ] **寄出法務回信**：草稿已完成（祐銓以顧問角色參與、AI 法務方向對應 Layer 4），待使用者確認後手動寄送
-- [ ] **決定是否修 Verification Agent Case A/B/C 比對邏輯**：目前只比對 clause_id，同一條款的第二個風險維度會被誤判成「已審查過」而丟棄。評估後不算難修（約 30-60 分鐘，改成比對 `(clause_id, 風險類別)`），但屬於「決定要不要花時間」而非「做不做得到」的問題，尚待使用者拍板
+- [x] **Commit 所有尚未進版的改動**：`PROJECT_PLAN.md`、`docs/architecture/系統架構_mermaid.md`、`src/api/contracts.py`、`src/api/schemas_api.py`、`frontend/demo.html`（commit `bf73892`）
+- [x] **寄出法務回信**：已寄出（2026-07-02）
+- [x] **修復 Verification Agent Case A/B/C 比對邏輯（2026-07-02）**：原本只比對 clause_id，同一條款的第二個風險維度會被誤判成「已審查過」而丟棄——用 v6 Demo 範例實測時發現這個 bug 是否觸發取決於 LLM 當次怎麼標 clause_id 字串，同一份合約重跑會不穩定。已修復：比對 key 改成 `(clause_id, 風險類別)`，規則引擎透過新增的 `RISK_CODE_CATEGORY` 對照表換算類別、Agent 沿用既有的 `categorize_candidate()`。v6 重跑 3 次結果穩定一致，3 份真實合約 + v2-v5 全數回歸測試通過。詳見 `docs/specs/verification_agent_spec.md` 第十一節。
+- [ ] **不做 Layer 4（pgvector + Taiwan Law MCP）建置**：2026-07-02 再次確認維持原決定，理由見「不做的（競賽前）」清單
 
 ### 週次 1（6/30 前，延續中）
 
@@ -77,7 +78,17 @@
 - ❌ 異質模型 MAS（Phase 2：Gemini + Claude 異質設計）
 - ❌ GraphRAG 跨條款依賴（Phase 2-3）
 - ❌ M365 Teams / SharePoint 整合（Phase 3）
-- ❌ **Layer 4：pgvector 語意檢索 + Taiwan Law MCP 法條查詢**（2026-07-01 確認：只做口頭路線圖，不現場 demo。定位是接在協商建議生成之前，補上「建議沒有法律依據、LLM 憑空發揮」這個今天發現的缺口——pgvector 存 CUAD/內部案例做相似案例檢索，MCP 查民法真實條文。不用 CUAD 或假資料湊 demo，真實公司合約資料也不能整批進資料庫，兩者都會讓現場說服力下降，故僅作簡報路線圖，不建置）
+- ❌ **Layer 4：pgvector 語意檢索 + Taiwan Law MCP 法條查詢**（尚未建置，2026-07-02 已完成技術可行性探索，見下方備忘）
+
+  > **2026-07-02 技術探索備忘**（若之後要做，直接從這裡接續，不用重新調查）：
+  > - **MCP 已找到現成、真實可用的套件**：`pip install mcp-taiwan-legal-db`（[github.com/lawchat-oss/mcp-taiwan-legal-db](https://github.com/lawchat-oss/mcp-taiwan-legal-db)，MIT 授權、免 API key、接法務部全國法規資料庫）。實際測試過用 MCP client 查詢「民法 252 條」，即時打到 `law.moj.gov.tw` 拿到真實條文「約定之違約金額過高者，法院得減至相當之數額。」——不是模擬，是真的查得到。
+  > - **架構限制**：`llm_service.py` 現有函式全部是同步（`def`），MCP client SDK 是 async-only，兩者不相容；且 FastAPI request handler 本身已在 event loop 中，不能再呼叫 `asyncio.run()`。此外 MAS 用的並行模式是 `ThreadPoolExecutor`（執行緒），不是 asyncio，硬接會變成兩套並行典範並存。
+  > - **建議做法（若要做）**：不要在 Demo 執行路徑裡即時呼叫 MCP。改成離線階段用 MCP 查好用得到的法條（約 10-15 條，對應現有風險類別），存成靜態 JSON 快取，Demo 執行時同步讀取本地檔案即可——完全不用碰 async，也不會讓 Demo 依賴政府網站即時回應（避免新增一個會斷線的風險點）。pgvector 語料庫比照辦理：LLM 生成 20-30 筆合成合約條款範例（涵蓋 15 類風險），本地相似度比對，不用真的架 PostgreSQL。
+  > - **Prompt 設計已定案**：`_build_user_prompt()` 已有現成但從未使用的 `reference_clause` 擴充點，可直接沿用同樣模式加「檢索到的法條」「相似先例」兩個區塊；System Prompt 需明確規定「只能引用提供的法條原文，不可自行引用或編造」，避免加了 RAG 反而更容易產生看似權威的幻覺；`ReportSection` 新增 `legal_basis` 欄位，比照「來源」欄的邏輯，有依據才顯示。
+  > - **定位確認**：不是自主 agent，是 AI 協作的 workflow——不需要 LangGraph 或任何 agentic 框架，純粹是「程式碼決定順序，LLM 只在固定的點被呼叫填空」。
+  > - **授權確認（2026-07-02）**：套件本身 MIT 授權，可商用（僅需保留版權聲明）。查到的法條/判決書內容依《著作權法》第9條屬公文性質，不受著作權保護，商業使用也沒有內容授權問題（大法官解釋資料另標示 CC0）。**唯一要注意的是存取方式**：套件用 Playwright 繞過政府網站的 WAF（log 顯示 `WAF bypass: running Playwright warmup...`），這跟授權無關，是存取條款層面的風險——現在低頻離線查詢（個位數次）風險極低，但若之後正式商業化、高頻呼叫，建議改查 law.moj.gov.tw 有無官方開放資料 API，不要長期依賴繞過 WAF 的爬蟲方式。
+  > - **8 個可用工具**：`query_regulation`（查法條）、`search_regulations`、`get_pcode`、`search_judgments`（查真實判決，可用 `main_text` 關鍵字篩選勝敗訴結果）、`get_judgment`、`get_interpretation`（大法官解釋）、`search_interpretations`、`get_citations`。目前只測試過 `query_regulation`；`search_judgments` 可查真實判決先例，比單純法條引用更有份量，時間夠可以考慮加。
+  > - **v6 Demo 範例進度（2026-07-02）**：已建立 `sla_contract/maintenance_v6_base.md` + `maintenance_v6_penalty_rate.md`，合成的軟體維護合約，用假公司名稱（星曜科技／安碩資訊）重現「千分之一 vs 0.3%」+「50%→30% 上限」兩個真實發現的模式，已驗證 Parser 解析正常（各 20 條款，違約金條款正確識別）。**尚未做**：接進 `contracts.py` 的 `EXAMPLE_CONTRACTS`（v6 需要獨立的 base 檔案，不能沿用 v1，因為 `compare_example()` 目前寫死永遠拿 v1 當原始版）、民法252條快取資料尚未實際接進 `llm_service.py` 協商建議生成流程。
 - ❌ 資料庫（競賽不需要持久化）
 
 ---
@@ -90,6 +101,34 @@
 | **AP 部長** | 數字 + 真實案例 | 「用真實公司合約測試：付款方式整段改寫、136 段條款曾經因為沒有條號被系統直接漏看，我們自己抓到並修好」 |
 | **Infra 部長** | 資安 + 架構 | 「合約資料不離開企業內網，API key 環境變數，stateless FastAPI」 |
 | **黑客松評審** | 誠實與自我修正的敘事 | 「系統會誠實標示『規則引擎 vs Agent 補漏』來源、也發現自己漏檢的地方——這次連我們自己新加的規則都一度誤判，當場抓到修掉，這是一個會自我發現弱點的系統，不是號稱零瑕疵」 |
+
+---
+
+## 常見追問與回答（Q&A 準備）
+
+### 「為什麼這樣設計？」（架構核心提問，優先準備）
+
+> 因為合約風險審查其實包含兩種完全不同性質的問題。一種是規律性的——像違約金比例下降、責任上限縮水，這種資深法務看到不會每次重新思考，是內化的判斷準則；另一種是需要真正語意理解的——像沒看過的寫法、條文之間的關聯。我們刻意把這兩種問題分給最適合處理的機制：規則引擎負責前者，100% 可重現、免費、瞬間；LLM 負責後者，需要語意彈性的部分。
+>
+> 如果只用 LLM 做全部判斷，我們就會失去「這個類別保證抓得到」這個承諾——這對法務工具是最關鍵的，因為你要的是可證明的信任，不是單次判斷可能比較聰明。同樣的理由，我們也沒有把系統做成自主 agent——法務審查需要可預測、可測試，不需要模型自己決定下一步要做什麼，所以是刻意設計成 AI 協作的 workflow，不是自主決策的系統。
+>
+> 這不是憑空講的理論。我們拿了三組真實公司合約實測，過程中真的發現規則引擎有漏洞——像「千分之一」這種中文分數寫法，Regex 完全看不懂，而語意補漏這層真的把它抓回來了。這證明了這個架構的必要性，是被真實資料驗證過的，不是紙上談兵。
+
+**這段話涵蓋的五個層次**（追問任何一句都有真實案例可以撐）：
+
+1. 問題本質：規律性風險 vs 需語意理解的風險，兩種性質不同
+2. 設計原則：規則負責前者（確定性）、LLM 負責後者（彈性）
+3. 為什麼不只用 LLM：會失去「可證明的召回保證」，法務工具的信任基礎
+4. 為什麼不是自主 agent：法務審查需要可預測、可測試，不需要模型自己決策——這是刻意的 AI 協作 workflow 設計，不是自主決策系統
+5. 真實驗證證據：三組真實合約測試中，規則引擎的漏洞是真的存在、真的被 Verification Agent 補上（千分之一案例）
+
+### 「這是真的 Agent 嗎？有沒有用 LangChain/AutoGPT 那種工具自主呼叫？」
+
+> 我們用「Agent」是指它扮演獨立審查者的角色（跟規則引擎的判斷分開驗證），不是指有工具自主呼叫的能力——目前是結構化的單次 LLM 呼叫嵌在固定流程裡，不是會自己決策的 agentic loop。這是刻意的選擇：我們的每一步都需要可預測、可測試，不需要模型自己決定要不要重試或換方向。
+
+### 「為什麼不乾脆全部用 LLM，省掉維護規則引擎的麻煩？」
+
+> 兩種問題性質不同，混在一起用同一種方法解，效率跟穩定性都受損。規則負責的部分是有確定解的（可用率下降多少算高風險，這是可以窮舉的），LLM 負責的部分才是真正需要語意判斷的。如果全部都用 LLM，等於把原本零成本、瞬間、100% 一致的判斷，降級成要花錢、要等、還可能每次結果不一樣的機率性判斷——這不是更聰明，是把簡單問題複雜化，也會讓「100% 高風險召回」這個核心賣點站不住腳。
 
 ---
 

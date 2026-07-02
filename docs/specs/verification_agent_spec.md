@@ -352,7 +352,7 @@ Verification Agent 不是 MAS 的一部分，而是在 MAS 之前的「旗標擴
 
 - **Verification Agent 只讀 diffs，不讀全文**——這是刻意設計（控制 context window），但代表如果 Step 3（Diff Engine）本身就漏掉某段內容（見下一項），Verification Agent 完全看不到，補漏不了。
 - **Diff Engine 涵蓋率漏洞（比 Verification Agent 更上游）**：純新增/刪除條款若沒有可辨識的條號，會被 `diff_engine.py` 直接丟棄，不會進入 diffs 清單。真實採購合約測出 138 段因此消失（已修復，補上跟 modified 型態一樣的 title fallback）。
-- **Verification Agent 的交叉核對邏輯（Case A/B/C）目前只比對 `clause_id`，沒有比對「風險內容是否為同一件事」**：若同一條款同時存在規則引擎抓到的風險 A 與 Agent 抓到的風險 B（不同風險維度），目前邏輯會因為 clause_id 重複而把 Agent 的風險 B 整個丟棄，這正是補漏機制原本該接住卻漏接的情境。**已知問題，尚未修復**，留待有更多真實案例驗證後再處理。
+- **Verification Agent 的交叉核對邏輯（Case A/B/C）曾經只比對 `clause_id`，沒有比對「風險內容是否為同一件事」**（✅ **2026-07-02 已修復**）：若同一條款同時存在規則引擎抓到的風險 A 與 Agent 抓到的風險 B（不同風險維度），舊邏輯會因為 clause_id 重複而把 Agent 的風險 B 整個丟棄。用合成的 v6 Demo 範例（軟體維護合約，違約金費率 0.3%→千分之一 + 上限 50%→30%）實測時發現，這個 bug 是否觸發取決於 Agent 當次把 clause_id 標成什麼字串——同一份合約重跑，這個發現有時活下來、有時被吞掉，屬於非決定性風險。修法：比對 key 從單純 `clause_id` 改成 `(clause_id, 風險類別)`，兩邊都用同一套 `categorize_candidate()` 分類（規則引擎透過新增的 `RISK_CODE_CATEGORY` 對照表換算），只有「同條款且同類別」才視為重複丟棄。v6 重跑 3 次結果穩定一致，3 份真實合約 + v2-v5 回歸測試皆正常。**已知殘留限制**：關鍵字分類本身仍有歧義（例如「違約金上限」同時命中「違約金/罰則」與「賠償上限」兩類），最壞情況是多出一筆無害的重複 Case C 旗標，不會再導致真正的發現被吞掉——符合「寧可多判不漏判」原則，不再深究。
 - **Verification Agent 本身非決定性**：同一份合約重跑，Case C 補漏數量會浮動（真實測試中同一份採購合約在 6～8 項之間浮動），代表補漏覆蓋率是機率性的，不是保證的。目前沒有讓使用者知道這件事的機制。
 
 ---

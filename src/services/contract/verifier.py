@@ -45,13 +45,54 @@ CATEGORY_KEYWORDS = {
 def categorize_candidate(trigger_reason: str) -> str:
     """Guess which existing risk category a Case C finding resembles.
 
-    Not used for judgment — only to help a human spot recurring patterns
-    worth turning into a permanent Rule Engine rule.
+    Used both to help a human spot recurring Case-C patterns worth turning
+    into a permanent Rule Engine rule, AND to scope Case A/B/C matching in
+    cross_check_risks() to "same clause AND same risk dimension" instead of
+    "same clause" alone (see RISK_CODE_CATEGORY).
+
+    KNOWN LIMITATION: single-keyword-bucket classification can't cleanly
+    separate overlapping concepts — e.g. "違約金上限降低" (a penalty CAP)
+    contains the keyword "違約金" and gets bucketed as "違約金/罰則" even
+    though the engine categorizes the same clause as "賠償上限". Worst case
+    this produces a redundant Case C flag alongside the engine's flag,
+    not a dropped one — acceptable given the project's 寧可多判不漏判
+    principle (a harmless duplicate beats silently losing a finding, which
+    is the failure mode this whole matching scheme exists to prevent).
+    Not tuning further: reordering CATEGORY_KEYWORDS to fix this shifts the
+    same ambiguity onto other real, validated cases (see verifier tests).
     """
     for category, kws in CATEGORY_KEYWORDS.items():
         if any(kw in trigger_reason for kw in kws):
             return category
     return "新類別候選（未歸類）"
+
+
+# Maps each Rule Engine risk_code to the same category taxonomy used by
+# categorize_candidate(), so an Agent finding on the same clause_id but a
+# different risk dimension isn't mistaken for "already covered by the
+# engine" and silently dropped (see cross_check_risks()).
+RISK_CODE_CATEGORY = {
+    "RISK_SLA_DEGRADE": "SLA/可用率",
+    "RISK_RESPONSE_TIME_EXTENDED": "回應/修復時間",
+    "RISK_PENALTY_WEAKENED": "違約金/罰則",
+    "RISK_LIABILITY_CAP_CHANGED": "賠償上限",
+    "RISK_LIABILITY_INCREASE": "賠償上限",
+    "RISK_PROTECTION_REMOVED": "保護條款",
+    "RISK_PROTECTION_ADDED": "保護條款",
+    "RISK_CONFIDENTIALITY_WEAKENED": "保密義務",
+    "RISK_DATA_CONTROL_LOST": "資料控制權",
+    "RISK_TERMINATION_CHANGED": "終止/解約",
+    "RISK_FORCE_MAJEURE_EXPANDED": "不可抗力",
+    "RISK_JURISDICTION_CHANGED": "管轄法院",
+    "RISK_IP_OWNERSHIP_CHANGED": "智慧財產權",
+    "RISK_LIABILITY_DIRECTION_REVERSED": "賠償上限",
+    "RISK_CONFIDENTIALITY_SCOPE_CHANGED": "保密義務",
+}
+
+
+def engine_flag_category(risk_code: str) -> str:
+    """Category for a Rule Engine flag, on the same taxonomy as categorize_candidate()."""
+    return RISK_CODE_CATEGORY.get(risk_code, "新類別候選（未歸類）")
 
 
 def log_candidate_rule(af: Dict[str, Any], contract_pair: str = "") -> None:
@@ -242,24 +283,42 @@ def cross_check_risks(
 ) -> List[RiskFlag]:
     """Merge Rule Engine and Verification Agent outputs.
 
-    Case A: both flagged → keep engine flag (already confirmed)
+    Case A: both flagged the same clause AND same risk dimension → keep engine flag (already confirmed)
     Case B: engine only → keep engine flag
-    Case C: agent only → append as RISK_AGENT_AUDITED (補漏)
+    Case C: agent-only risk dimension (new clause, OR same clause but a
+        *different* risk than the one the engine already flagged there)
+        → append as RISK_AGENT_AUDITED (補漏)
+
+    Matching key is (clause_id, risk category) rather than clause_id alone.
+    A single clause can carry more than one distinct risk (e.g. a penalty
+    clause where the engine catches the cap change but only the Agent
+    catches the rate's Chinese-fraction format) — keying on clause_id alone
+    would make the engine's flag "cover" a completely different risk the
+    Agent found in the same clause, silently dropping it depending on
+    incidental LLM phrasing of clause_id (non-deterministic).
     """
     final_flags = list(engine_flags)
-    engine_ids = {normalize_clause_id(str(f.clause_id)) for f in engine_flags}
-    seen_agent_ids = set()
+    engine_keys = {
+        (normalize_clause_id(str(f.clause_id)), engine_flag_category(f.risk_code))
+        for f in engine_flags
+    }
+    seen_agent_keys = set()
 
     for af in agent_flags:
         normalized = normalize_clause_id(af.get("clause_id", ""))
-        if not normalized or normalized in engine_ids:
-            continue  # Case A or B
-        if normalized in seen_agent_ids:
-            log.info(f"VerificationAgent skipped duplicate Case C flag: {af['clause_id']}")
-            continue  # duplicate agent finding for the same clause
-        seen_agent_ids.add(normalized)
+        if not normalized:
+            continue
+        category = categorize_candidate(af.get("trigger_reason", ""))
+        key = (normalized, category)
+        if key in engine_keys:
+            continue  # Case A or B: same clause, same risk dimension
+        if key in seen_agent_keys:
+            log.info(f"VerificationAgent skipped duplicate Case C flag: {af['clause_id']} ({category})")
+            continue  # duplicate agent finding for the same clause + dimension
+        seen_agent_keys.add(key)
 
-        # Case C: agent-only finding
+        # Case C: agent-only finding (new clause, or new risk dimension on a
+        # clause the engine already flagged for a different reason)
         matched = find_matching_diff(af["clause_id"], diffs)
         flag = RiskFlag(
             clause_id=af["clause_id"],
@@ -273,6 +332,6 @@ def cross_check_risks(
         )
         final_flags.append(flag)
         log_candidate_rule(af, contract_pair=contract_pair)
-        log.info(f"VerificationAgent added Case C flag: {af['clause_id']} ({flag.risk_level})")
+        log.info(f"VerificationAgent added Case C flag: {af['clause_id']} ({category}, {flag.risk_level})")
 
     return final_flags

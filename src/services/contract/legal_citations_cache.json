@@ -1,0 +1,52 @@
+{
+  "RISK_LIABILITY_CAP_CHANGED": [
+    {
+      "law_name": "民法",
+      "article_no": "216",
+      "content": "損害賠償，除法律另有規定或契約另有訂定外，應以填補債權人所受損害及所失利益為限。依通常情形，或依已定之計劃、設備或其他特別情事，可得預期之利益，視為所失利益。",
+      "source_url": "https://law.moj.gov.tw/LawClass/LawSingle.aspx?pcode=B0000001&flno=216",
+      "queried_at": "2026-07-02"
+    },
+    {
+      "law_name": "民法",
+      "article_no": "222",
+      "content": "故意或重大過失之責任，不得預先免除。",
+      "source_url": "https://law.moj.gov.tw/LawClass/LawSingle.aspx?pcode=B0000001&flno=222",
+      "queried_at": "2026-07-02"
+    },
+    {
+      "law_name": "民法",
+      "article_no": "252",
+      "content": "約定之違約金額過高者，法院得減至相當之數額。",
+      "source_url": "https://law.moj.gov.tw/LawClass/LawSingle.aspx?pcode=B0000001&flno=252",
+      "queried_at": "2026-07-02"
+    }
+  ],
+  "RISK_PROTECTION_REMOVED": [
+    {
+      "law_name": "民法",
+      "article_no": "247-1",
+      "content": "依照當事人一方預定用於同類契約之條款而訂定之契約，為左列各款之約定，按其情形顯失公平者，該部分約定無效：一、免除或減輕預定契約條款之當事人之責任者。二、加重他方當事人之責任者。三、使他方當事人拋棄權利或限制其行使權利者。四、其他於他方當事人有重大不利益者。",
+      "source_url": "https://law.moj.gov.tw/LawClass/LawSingle.aspx?pcode=B0000001&flno=247-1",
+      "queried_at": "2026-07-02"
+    }
+  ],
+  "RISK_FORCE_MAJEURE_EXPANDED": [
+    {
+      "law_name": "民法",
+      "article_no": "230",
+      "content": "因不可歸責於債務人之事由，致未為給付者，債務人不負遲延責任。",
+      "source_url": "https://law.moj.gov.tw/LawClass/LawSingle.aspx?pcode=B0000001&flno=230",
+      "queried_at": "2026-07-02"
+    }
+  ],
+  "RISK_JURISDICTION_CHANGED": [
+    {
+      "law_name": "民事訴訟法",
+      "article_no": "24",
+      "content": "當事人得以合意定第一審管轄法院。但以關於由一定法律關係而生之訴訟為限。前項合意，應以文書證之。",
+      "source_url": "https://law.moj.gov.tw/LawClass/LawSingle.aspx?pcode=B0010001&flno=24",
+      "queried_at": "2026-07-02"
+    }
+  ]
+}
