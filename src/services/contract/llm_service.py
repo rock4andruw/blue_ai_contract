@@ -166,13 +166,24 @@ def analyze_flag(flag: RiskFlag, reference_clause: str = "", api_key: Optional[s
         except Exception as e:
             log.warning(f"precedent retrieval failed: {e}")
     precedent_text = precedent["case_summary"] + "\n過去協商結果：" + precedent["negotiation_stance"] if precedent else ""
+    precedent_display = (
+        f"{precedent['case_summary']}\n過去協商結果：{precedent['negotiation_stance']}（相似度 {precedent['similarity']:.0%}）"
+        if precedent else ""
+    )
 
     if gemini_key:
-        return _analyze_with_gemini(flag, reference_clause, gemini_key, legal_citation, precedent_text)
+        section = _analyze_with_gemini(flag, reference_clause, gemini_key, legal_citation, precedent_text)
     elif claude_key:
-        return _analyze_with_claude(flag, reference_clause, claude_key, legal_citation, precedent_text)
+        section = _analyze_with_claude(flag, reference_clause, claude_key, legal_citation, precedent_text)
     else:
-        return _analyze_with_template(flag)
+        section = _analyze_with_template(flag)
+
+    # Attach the raw retrieved sources regardless of which branch produced the
+    # section, so the UI can show "what Layer 4 actually found" independent
+    # of how the LLM chose to word legal_basis (or whether it wrote one at all).
+    section.legal_citation_raw = legal_citation
+    section.precedent_raw = precedent_display
+    return section
 
 
 def _analyze_with_gemini(

@@ -102,6 +102,10 @@ def to_markdown(report: ComparisonReport) -> str:
                 lines.append(f"- {opt}")
             if s.legal_basis:
                 lines.append(f"\n⚖ **法律依據**：{s.legal_basis}")
+            if s.legal_citation_raw:
+                lines.append(f"\n🏛 *MCP 法條原文*：{s.legal_citation_raw}")
+            if s.precedent_raw:
+                lines.append(f"\n📚 *向量檢索相似先例*：{s.precedent_raw}")
             lines.append("")
 
     lines.append("\n---\n")

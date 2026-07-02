@@ -590,6 +590,29 @@
     .mas-view-a { background: #FEF7F0; }
     .mas-view-b { background: #F0F7FE; }
 
+    /* Layer 4 raw source provenance (MCP legal cache / vector precedent corpus) */
+    .source-block {
+      margin-top: 8px;
+      padding: 10px 12px;
+      border-radius: var(--radius);
+      border-left: 3px solid var(--border-mid);
+      font-size: 12.5px;
+      line-height: 1.55;
+      color: var(--ink-light);
+    }
+    .source-block + .source-block { margin-top: 6px; }
+    .source-mcp    { background: #F0F7FE; border-left-color: #5B8DBF; }
+    .source-vector { background: #F5F0FB; border-left-color: #8C6FB0; }
+    .source-label {
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 9.5px;
+      font-weight: 700;
+      letter-spacing: .4px;
+      text-transform: uppercase;
+      margin-bottom: 4px;
+      opacity: .7;
+    }
+
     /* download */
     .btn-dl {
       display: inline-flex;
@@ -1246,6 +1269,18 @@
             ${c.legal_basis ? `
             <div class="field-label" style="margin-top:14px;">⚖ 法律依據</div>
             <div style="color:var(--ink-light);font-size:13px;">${escHtml(c.legal_basis)}</div>` : ''}
+            ${(c.legal_citation_raw || c.precedent_raw) ? `
+            <div class="field-label" style="margin-top:10px;">🔎 Layer 4 原始檢索資料</div>
+            ${c.legal_citation_raw ? `
+            <div class="source-block source-mcp">
+              <div class="source-label">🏛 MCP 法條快取（law.moj.gov.tw）</div>
+              <div>${escHtml(c.legal_citation_raw)}</div>
+            </div>` : ''}
+            ${c.precedent_raw ? `
+            <div class="source-block source-vector">
+              <div class="source-label">📚 向量檢索先例（gemini-embedding-2 cosine similarity）</div>
+              <div>${escHtml(c.precedent_raw)}</div>
+            </div>` : ''}` : ''}
             ${c.mas_status === 'pending' ? `
             <div class="field-label" style="margin-top:14px;">雙重驗證意見分歧</div>
             <div class="mas-views">
