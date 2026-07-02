@@ -13,19 +13,38 @@ from typing import List, Optional
 from .schemas import RiskFlag, ReportSection, RISK_CODES
 from .mas_service import run_mas
 from .precedent_corpus import find_similar_precedent
+from .verifier import categorize_candidate, RISK_CODE_CATEGORY
 
 log = logging.getLogger(__name__)
 
 _LEGAL_CACHE_PATH = os.path.join(os.path.dirname(__file__), "legal_citations_cache.json")
 _legal_cache: Optional[dict] = None
 
+# Reverse of verifier.RISK_CODE_CATEGORY: category label -> risk_codes that
+# map to it. Lets a Case C flag (risk_code always "RISK_AGENT_AUDITED")
+# still reach a cached citation by its actual risk category instead of its
+# generic label — built once from the single source of truth in verifier.py
+# rather than duplicating the category taxonomy here.
+_CATEGORY_TO_RISK_CODES: dict = {}
+for _code, _category in RISK_CODE_CATEGORY.items():
+    _CATEGORY_TO_RISK_CODES.setdefault(_category, []).append(_code)
 
-def _get_legal_citation(risk_code: str) -> str:
+
+def _get_legal_citation(risk_code: str, trigger_reason: str = "") -> str:
     """Look up a real Civil Code article for risk_code from the offline
     cache built via mcp-taiwan-legal-db (see next_step_plan.md). Never
     calls the MCP server live — synchronous file read only, no network
     dependency in the request path. Returns "" if nothing cached for this
-    risk_code (most categories have no clean statute match; that's fine)."""
+    risk_code (most categories have no clean statute match; that's fine).
+
+    Rule Engine flags carry one of the 15 real risk_codes, matching the
+    cache's keys directly. Verification Agent (Case C) flags all carry the
+    generic risk_code "RISK_AGENT_AUDITED", which never has a cache entry —
+    for those, categorize trigger_reason with the same taxonomy verifier.py
+    uses for Case A/B/C matching, then look up any risk_code sharing that
+    category. This is a deliberate fallback, not a guess: it reuses the
+    exact classification already trusted elsewhere in the pipeline.
+    """
     global _legal_cache
     if _legal_cache is None:
         try:
@@ -33,7 +52,15 @@ def _get_legal_citation(risk_code: str) -> str:
                 _legal_cache = json.load(f)
         except (OSError, json.JSONDecodeError):
             _legal_cache = {}
+
     entries = _legal_cache.get(risk_code) or []
+    if not entries and trigger_reason:
+        category = categorize_candidate(trigger_reason)
+        for candidate_code in _CATEGORY_TO_RISK_CODES.get(category, []):
+            if _legal_cache.get(candidate_code):
+                entries = _legal_cache[candidate_code]
+                break
+
     if not entries:
         return ""
     e = entries[0]
@@ -101,7 +128,7 @@ def analyze_flag(flag: RiskFlag, reference_clause: str = "", api_key: Optional[s
     # subprocess or PostgreSQL. Best-effort: missing/failed lookups just
     # mean an ungrounded (but still valid) negotiation suggestion, same as
     # before Layer 4 existed.
-    legal_citation = _get_legal_citation(flag.risk_code)
+    legal_citation = _get_legal_citation(flag.risk_code, flag.trigger_reason)
     precedent = None
     if gemini_key:
         try:

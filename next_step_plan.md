@@ -39,7 +39,7 @@
   - `precedent_corpus.py` + `precedent_corpus.json`：10 筆手寫合成先例案例（緊扣 v2-v6 demo 涵蓋的風險類型），用 `gemini-embedding-2`（3072 維）算真實向量，本地 cosine similarity 檢索，不是關鍵字比對、也不用架 PostgreSQL
   - `llm_service.py`：`_build_user_prompt()` 新增「檢索到的法條」「相似先例」區塊；System Prompt 明確規定「只能引用提供的法條原文，不可自行編造」防止 RAG 反而誘發幻覺；`ReportSection`/API/前端新增 `legal_basis` 欄位，有依據才顯示（比照「來源」欄的誠實揭露邏輯）
   - 實測 v6：協商對策正確引用「民法第216條」真實條文；3 份真實合約 + v4 + v6 全數回歸測試通過
-  - **已知缺口**：Verification Agent 補漏（Case C）的 `risk_code` 統一標成 `RISK_AGENT_AUDITED`，查不到對應法條快取（快取用原始 15 種 risk_code 索引）——欄位留空是安全預設值，非顯示錯誤，暫不修復
+  - ✅ **已修復（2026-07-02）**：Case C 查不到法條的問題。修法：`_get_legal_citation()` 新增分類 fallback——當 `risk_code="RISK_AGENT_AUDITED"` 查無結果時，用 `categorize_candidate()`（沿用 verifier.py 既有的分類邏輯，不重造輪子）分類 `trigger_reason`，再透過 `RISK_CODE_CATEGORY` 反查同類別的其他 risk_code，找得到就用該筆快取。同時把民法252條額外掛到 `RISK_PENALTY_WEAKENED` 底下（原本只掛在 `RISK_LIABILITY_CAP_CHANGED`，語意上 252 條更貼近違約金/罰則類）。效果：v6 的 Case C 發現（違約金費率）現在能正確引用民法252條；5 份測試合約的法律依據出現次數從個位數提升到 5/14/1/11/2 次。**特別考慮並否決的替代方案**：不採用「查無依據時顯示泛用安慰文字」的做法（外部審查曾建議），因為那會讓「有依據」跟「安慰性填充文字」在同一個「⚖ 法律依據」標籤下混淆，違背「空白 = 誠實揭露沒有依據」的設計原則；改為修根因（正確分類後去查），而不是掩蓋症狀。
 
 ---
 

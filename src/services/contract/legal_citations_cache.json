@@ -22,6 +22,15 @@
       "queried_at": "2026-07-02"
     }
   ],
+  "RISK_PENALTY_WEAKENED": [
+    {
+      "law_name": "民法",
+      "article_no": "252",
+      "content": "約定之違約金額過高者，法院得減至相當之數額。",
+      "source_url": "https://law.moj.gov.tw/LawClass/LawSingle.aspx?pcode=B0000001&flno=252",
+      "queried_at": "2026-07-02"
+    }
+  ],
   "RISK_PROTECTION_REMOVED": [
     {
       "law_name": "民法",
