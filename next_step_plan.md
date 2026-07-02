@@ -88,7 +88,7 @@
   > - **定位確認**：不是自主 agent，是 AI 協作的 workflow——不需要 LangGraph 或任何 agentic 框架，純粹是「程式碼決定順序，LLM 只在固定的點被呼叫填空」。
   > - **授權確認（2026-07-02）**：套件本身 MIT 授權，可商用（僅需保留版權聲明）。查到的法條/判決書內容依《著作權法》第9條屬公文性質，不受著作權保護，商業使用也沒有內容授權問題（大法官解釋資料另標示 CC0）。**唯一要注意的是存取方式**：套件用 Playwright 繞過政府網站的 WAF（log 顯示 `WAF bypass: running Playwright warmup...`），這跟授權無關，是存取條款層面的風險——現在低頻離線查詢（個位數次）風險極低，但若之後正式商業化、高頻呼叫，建議改查 law.moj.gov.tw 有無官方開放資料 API，不要長期依賴繞過 WAF 的爬蟲方式。
   > - **8 個可用工具**：`query_regulation`（查法條）、`search_regulations`、`get_pcode`、`search_judgments`（查真實判決，可用 `main_text` 關鍵字篩選勝敗訴結果）、`get_judgment`、`get_interpretation`（大法官解釋）、`search_interpretations`、`get_citations`。目前只測試過 `query_regulation`；`search_judgments` 可查真實判決先例，比單純法條引用更有份量，時間夠可以考慮加。
-  > - **v6 Demo 範例進度（2026-07-02）**：已建立 `sla_contract/maintenance_v6_base.md` + `maintenance_v6_penalty_rate.md`，合成的軟體維護合約，用假公司名稱（星曜科技／安碩資訊）重現「千分之一 vs 0.3%」+「50%→30% 上限」兩個真實發現的模式，已驗證 Parser 解析正常（各 20 條款，違約金條款正確識別）。**尚未做**：接進 `contracts.py` 的 `EXAMPLE_CONTRACTS`（v6 需要獨立的 base 檔案，不能沿用 v1，因為 `compare_example()` 目前寫死永遠拿 v1 當原始版）、民法252條快取資料尚未實際接進 `llm_service.py` 協商建議生成流程。
+  > - **v6 Demo 範例（2026-07-02 完工）**：`sla_contract/maintenance_v6_base.md` + `maintenance_v6_penalty_rate.md`，合成軟體維護合約（假公司名：星曜科技／安碩資訊），重現「千分之一 vs 0.3%」+「50%→30% 上限」兩個真實發現的模式。已接進 `contracts.py`（`EXAMPLE_CONTRACTS` + 新增 `EXAMPLE_BASE_OVERRIDE`，因為 v6 用自己的 base 檔案，不沿用 v1）、`demo.html` 新增 v6 範例按鈕。用 Playwright 實際開瀏覽器驗證：畫面正確顯示規則引擎（責任上限 50%→30%）+ Agent 補漏（違約金費率 0.3%→千分之一）兩層來源標籤，無 console 錯誤。**尚未做**：民法252條快取資料（`legal_citations_cache.json`）還沒接進 `llm_service.py` 協商建議生成流程，目前只是存著沒被使用——這是加分項，非必要，核心「千分之一」故事光靠 Verification Agent 的來源標籤已經夠強。
 - ❌ 資料庫（競賽不需要持久化）
 
 ---
