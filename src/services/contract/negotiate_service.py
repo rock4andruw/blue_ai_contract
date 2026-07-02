@@ -7,9 +7,11 @@ and redline (walkaway) positions for negotiation.
 import json
 import logging
 import os
+import re
+from pathlib import Path
 from typing import Optional
 
-STATIC_PLAYBOOK: dict[str, dict] = {
+_FALLBACK_PLAYBOOK: dict[str, dict] = {
     "RISK_SLA_DEGRADE": {
         "tier1": "要求恢復原可用率標準（如 99.9%），並保留現行賠償機制不變。",
         "tier1_clause": "服務可用率不得低於 99.9%（每月計算），未達標準時乙方應依第 X 條給付服務折讓。",
@@ -102,6 +104,57 @@ STATIC_PLAYBOOK: dict[str, dict] = {
         "redline": "無資料返還/刪除義務，或乙方可將甲方資料用於商業目的——不可接受。",
     },
 }
+
+_PLAYBOOK_FIELDS = ("tier1", "tier1_clause", "tier2", "tier2_clause", "redline")
+
+
+def _load_skill_section(skill_path: str, section_header: str) -> str:
+    """Extract a named ## section from a skill file. Returns empty string on any failure."""
+    try:
+        content = Path(skill_path).read_text(encoding="utf-8")
+        start = content.find(f"## {section_header}")
+        if start == -1:
+            return ""
+        next_section = content.find("\n## ", start + 1)
+        return content[start:next_section if next_section != -1 else len(content)].strip()
+    except Exception:
+        return ""
+
+
+def _parse_playbook_skill(section_text: str) -> dict[str, dict]:
+    """Parse '### RISK_CODE' + '- field：value' blocks into the playbook dict shape."""
+    playbook: dict[str, dict] = {}
+    current_code = None
+    for line in section_text.splitlines():
+        header_match = re.match(r"^### (RISK_\w+)\s*$", line)
+        if header_match:
+            current_code = header_match.group(1)
+            playbook[current_code] = {}
+            continue
+        item_match = re.match(r"^- (tier1_clause|tier2_clause|tier1|tier2|redline)：(.+)$", line)
+        if item_match and current_code:
+            playbook[current_code][item_match.group(1)] = item_match.group(2).strip()
+    return playbook
+
+
+def _validate_playbook(playbook: dict, expected_codes: set) -> bool:
+    if not playbook or set(playbook.keys()) != expected_codes:
+        return False
+    return all(set(fields.keys()) == set(_PLAYBOOK_FIELDS) for fields in playbook.values())
+
+
+_SKILLS_DIR = Path(__file__).resolve().parents[3] / ".claude" / "skills"
+_SKILL_PLAYBOOK_TEXT = _load_skill_section(
+    str(_SKILLS_DIR / "negotiation-strategy.md"),
+    "三層協商 Playbook（各風險類型標準立場）",
+)
+_parsed_playbook = _parse_playbook_skill(_SKILL_PLAYBOOK_TEXT)
+
+if _validate_playbook(_parsed_playbook, set(_FALLBACK_PLAYBOOK.keys())):
+    STATIC_PLAYBOOK: dict[str, dict] = _parsed_playbook
+else:
+    logging.warning("negotiation-strategy.md playbook section missing/malformed — using built-in fallback playbook")
+    STATIC_PLAYBOOK = _FALLBACK_PLAYBOOK
 
 NEGOTIATE_SYSTEM_PROMPT = """你是企業法務顧問，專精台灣 SLA、採購、NDA 合約談判。
 
