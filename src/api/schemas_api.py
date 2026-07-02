@@ -48,6 +48,7 @@ class RiskFlagItem(BaseModel):
     risk_name: str
     trigger_reason: str
     risk_direction: str
+    source: str = "rule_engine"  # "rule_engine" | "verification_agent"
 
 
 class ReviewAdvice(BaseModel):

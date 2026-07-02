@@ -34,10 +34,11 @@ subgraph P1["🟢 Phase 1 — MVP（已完成）"]
         PARSER["📄 Parser\nMD / PDF / DOCX\ntrack-change HTML 清理\npdfplumber · python-docx"]
         ALIGN["🔗 Alignment\nLCS + 條款號比對\nNeedleman-Wunsch DP\n相似度後處理 ≥75%"]
         DIFF["🔀 Diff Engine\n新增 / 修改 / 刪除\nDiffItem 標準化輸出"]
-        RISK["🛡 Risk Rule Engine\n15 條規則 · pure Python\nHigh-risk recall 100%\nrisk_code · risk_level · trigger_reason"]
-        LLM["🤖 LLM Service\nGemini 3.1 Flash Lite（主）\nClaude Sonnet 4.6（備）\nTemplate fallback（無 key 可跑）"]
+        RISK["🛡 Risk Rule Engine（Layer 1）\n15 條規則 · pure Python\n預定義類別 100% recall\nrisk_code · risk_level · trigger_reason"]
+        VA["🔍 Verification Agent（Layer 2）\nLLM 語意補漏，讀 Diff 不讀全文\n交叉核對：✓雙軌確認／✓規則觸發／⚠補漏警示\n候選規則紀錄 candidate_rules.jsonl（不自動生規則）"]
+        LLM["🤖 LLM Service\nGemini 3.1 Flash Lite（主）\nClaude Sonnet 4.6 / Haiku 4.5（備）\nTemplate fallback（無 key 可跑）"]
         RPT["📊 Report Generator\nMarkdown 報告輸出\n審閱建議分層\nMAS 標籤整合"]
-        PARSER --> ALIGN --> DIFF --> RISK --> LLM --> RPT
+        PARSER --> ALIGN --> DIFF --> RISK --> VA --> LLM --> RPT
     end
 
     subgraph STORE["本地資料"]
@@ -73,12 +74,12 @@ end
 
 subgraph P2["🔵 Phase 2 — 能力擴展（3–6 月）"]
     direction LR
-    subgraph P2L["MCP 整合"]
-        LAW["⚖️ Taiwan Law MCP\n個資法 / 民法\n法條自動引用"]
+    subgraph P2L["Layer 4：法律依據檢索（RAG）"]
+        LAW["⚖️ Taiwan Law MCP\n即時查詢民法／個資法\n補上協商建議的法條依據"]
         O365["📧 Office 365 MCP\nTeams 通知\nSharePoint 歸檔"]
     end
     subgraph P2R["Phase 2 擴展項目"]
-        PG["🗄 PostgreSQL + pgvector\n企業標準條款庫\n語意相似度檢索"]
+        PG["🗄 PostgreSQL + pgvector\nCUAD／內部案例語意檢索\n補上協商建議的先例依據"]
         CTYPE["📄 合約類型擴展\nNDA · 採購合約 · LOI\n合約範本庫 CONTRACT_EXT"]
         HETERO["🎭 異質模型 MAS\nGemini Agent A\n+ Claude Agent B\n消除 Echo Chamber"]
     end
@@ -110,8 +111,8 @@ LLM --> CLAUDE
 MA --> GEMINI
 MB --> GEMINI
 AZURE -.->|正式環境部署| D1
-PG -.->|Phase 2：語意增強| RISK
-LAW -.->|Phase 2：法條引用| LLM
+PG -.->|Layer 4：協商建議先例檢索| LLM
+LAW -.->|Layer 4：協商建議法條引用| LLM
 O365 -.->|Phase 2：自動通知| RPT
 HETERO -.->|Phase 2：取代同質 MAS| JG
 
@@ -130,6 +131,7 @@ classDef store fill:#0a1a12,stroke:#6ee7b7,stroke-width:1.5px,color:#ecfdf5;
 classDef extc fill:#0b1324,stroke:#818cf8,stroke-width:1.5px,color:#eef2ff;
 classDef mcp fill:#0f1a26,stroke:#60a5fa,stroke-width:1.5px,color:#eff6ff;
 classDef hetero fill:#1a0f1f,stroke:#e879f9,stroke-width:1.8px,color:#fdf4ff;
+classDef verify fill:#06111b,stroke:#facc15,stroke-width:2px,color:#fefce8;
 
 class P1 done;
 class P15 done;
@@ -138,6 +140,7 @@ class P3 ent;
 class EXT ext;
 class PRINCIPLE principle;
 class PARSER,ALIGN,DIFF,RISK,LLM,RPT pipeline;
+class VA verify;
 class SK1,SK2,SK3 skill;
 class MA agent_a;
 class MB agent_b;

@@ -1,4 +1,4 @@
-# 下一步規劃（2026-07-01 更新）
+# 下一步規劃（2026-07-02 更新）
 
 **競賽截止**：2026 年 8 月初
 **評審組成**：AI / AP / Infra 部長 + 黑客松評審
@@ -38,6 +38,13 @@
 ---
 
 ## 近期工作（7 月）
+
+### 立即待辦（2026-07-02 新增）
+
+- [x] **修復重大缺口：API 沒有接 Verification Agent**：`src/api/contracts.py` 的 `_build_response()` 原本自己兜 Parser→Alignment→Diff→RiskEngine→LLM，完全沒呼叫 `verifier.py`——代表 Demo UI（`/demo`，含上傳模式與範例模式）原本看不到今天做的核心功能，只有終端機直接跑 `orchestrator.compare()` 才有。已修復：`contracts.py` 接上 `VerificationAgent`/`cross_check_risks`，`schemas_api.py` 的 `RiskFlagItem` 新增 `source` 欄位，`frontend/demo.html` 完整風險旗標表格加「來源」欄顯示 ✓ 規則引擎／⚠ Agent 補漏。用 Playwright 實際開瀏覽器跑過 v4 範例，畫面正確顯示（3 項 Agent 補漏 + 9 項規則引擎，來源標籤清楚區分），無 console 錯誤。**這幾個檔案尚未 commit。**
+- [ ] **Commit 所有尚未進版的改動**：`PROJECT_PLAN.md`（CLM 定位、Layer 4 路線圖、簡報收斂原則）、`docs/architecture/系統架構_mermaid.md`（Verification Agent 節點、pgvector 接線修正）、`src/api/contracts.py`、`src/api/schemas_api.py`、`frontend/demo.html`（以上為 API/UI 接上 Verification Agent 的修復）
+- [ ] **寄出法務回信**：草稿已完成（祐銓以顧問角色參與、AI 法務方向對應 Layer 4），待使用者確認後手動寄送
+- [ ] **決定是否修 Verification Agent Case A/B/C 比對邏輯**：目前只比對 clause_id，同一條款的第二個風險維度會被誤判成「已審查過」而丟棄。評估後不算難修（約 30-60 分鐘，改成比對 `(clause_id, 風險類別)`），但屬於「決定要不要花時間」而非「做不做得到」的問題，尚待使用者拍板
 
 ### 週次 1（6/30 前，延續中）
 

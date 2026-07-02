@@ -17,6 +17,7 @@ from ..services.contract.parser import ContractParser
 from ..services.contract.alignment import ContractAligner
 from ..services.contract.diff_engine import DiffEngine
 from ..services.contract.risk_engine import RiskEngine
+from ..services.contract.verifier import VerificationAgent, cross_check_risks, RISK_CODE_AGENT
 from ..services.contract.llm_service import generate_sections
 from ..services.contract.negotiate_service import generate_playbook
 from ..services.contract.report_generator import build_report, to_markdown, LEVEL_ZH
@@ -60,6 +61,11 @@ def _build_response(
 
     risk_engine = RiskEngine()
     flags = risk_engine.analyze(diffs)
+
+    agent = VerificationAgent()
+    agent_flags = agent.audit_diffs(diffs)
+    contract_pair = f"{original_filename} vs {revised_filename}"
+    flags = cross_check_risks(flags, agent_flags, diffs, contract_pair=contract_pair)
 
     sections, summary_mode = generate_sections(
         flags, api_key=api_key, return_mode=True
@@ -106,6 +112,7 @@ def _build_response(
             risk_name=RISK_CODES.get(f.risk_code, f.risk_code),
             trigger_reason=f.trigger_reason,
             risk_direction=f.risk_direction,
+            source="verification_agent" if f.risk_code == RISK_CODE_AGENT else "rule_engine",
         )
         for f in report.all_risk_flags
     ]

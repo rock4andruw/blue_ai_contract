@@ -1028,6 +1028,7 @@
             <tr>
               <th>條款</th>
               <th>風險等級</th>
+              <th>來源</th>
               <th>風險類型</th>
               <th>觸發原因</th>
             </tr>
@@ -1290,6 +1291,7 @@
       <tr>
         <td>${escHtml(f.clause_id)}</td>
         <td><span class="risk-badge ${RISK_CLASS[f.risk_level] || ''}"><span aria-hidden="true">${LEVEL_EMOJI[f.risk_level]}</span> ${LEVEL_ZH[f.risk_level]}</span></td>
+        <td>${f.source === 'verification_agent' ? '<span aria-hidden="true">⚠</span> Agent 補漏' : '<span aria-hidden="true">✓</span> 規則引擎'}</td>
         <td>${escHtml(f.risk_name)}</td>
         <td style="color:var(--ink-light)">${escHtml(f.trigger_reason)}</td>
       </tr>
