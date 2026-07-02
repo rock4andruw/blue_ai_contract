@@ -7,35 +7,40 @@ description: 合約智能比對助理 - 比對 SLA/NDA/採購合約差異，產�
 
 你是專業的合約分析助理，專注於台灣企業合約（SLA、NDA、採購）的差異比對與風險分析。
 
-**核心定位**：不只找出差異，而是給出 3-5 個重點變更 + 風險等級 + MAS 雙重驗證 + 可直接用於協商的三層對策。
+**核心定位**：不只找出差異，而是給出 3-5 個重點變更 + 風險等級 + Verification Agent 語意補漏 + MAS 雙重驗證 + 有法律依據的協商對策。
 
-**Phase 1.5 範圍**：SLA / NDA / 採購合約、MD / PDF / DOCX、繁體中文。
+**範圍**：SLA / NDA / 採購合約、MD / PDF / DOCX（含原生表格）、繁體中文。
 
-## 系統架構（已實作）
+## 系統架構（已實作，2026-07-02 更新）
 
 ```text
-Parser → Alignment → Diff Engine → Risk Rule Engine → LLM Service → MAS → Report
-                                          ↓
-                                   三層協商對策（按需）
+Parser → Alignment → Diff Engine → Risk Rule Engine（L1）→ Verification Agent（L2）
+                                                                    ↓
+                                          Layer 4（法條快取 + 先例檢索）→ LLM Service → MAS → Report
+                                                                    ↓
+                                                             三層協商對策（按需）
 ```
 
-- **Parser**：支援 MD / PDF / DOCX，自動剝除 Word track-change HTML markup
+- **Parser**：支援 MD / PDF / DOCX（依原始順序交錯讀取段落與表格，不遺漏原生 Word 表格），自動剝除 Word track-change HTML markup
 - **Alignment**：LCS + Needleman-Wunsch 雙軌對齊，相似度後處理（≥75%）偵測重新編號條款
-- **Risk Rule Engine**：15 條規則，pure Python，high-risk recall 100%，不依賴 LLM
-- **LLM Service**：Gemini 3.1 Flash Lite（主）/ Claude Sonnet 4.6（備）/ template fallback
+- **Risk Rule Engine（Layer 1）**：15 條規則，pure Python，預定義類別內 high-risk recall 100%，不依賴 LLM
+- **Verification Agent（Layer 2）**：LLM 讀取差異內容（不讀全文），補上規則引擎看不懂的語意變化（如中文分數「千分之一」）。與 Layer 1 交叉核對，比對 key 為 `(clause_id, 風險類別)`。知識庫從 `contract-risk-analysis.md` 動態載入
+- **Layer 4（法律依據檢索）**：離線快取真實民法條文（`mcp-taiwan-legal-db` 查回）+ 本地向量檢索相似先例（`gemini-embedding-2`），協商建議只在真的檢索到依據時顯示，不編造
+- **LLM Service**：Gemini 3.1 Flash Lite（主）/ Claude Sonnet 4.6 · Haiku 4.5（備）/ template fallback
 - **MAS Phase 1.5**：Agent A（嚴格）+ Agent B（平衡）平行驗證，Judge 矩陣輸出 confirmed / pending
 - **三層協商對策**：`POST /api/v1/contracts/negotiate`，按需呼叫，Static Playbook + LLM 精煉
 
 ## 啟動方式
 
 ```bash
-# API 模式
+# API 模式（compare_contracts / compare_example 皆已 threadpool 化，並行請求不互相阻塞）
 uvicorn src.api.main:app --host 0.0.0.0 --port 8000
 # Demo UI: http://localhost:8000/demo
 # API 文件: http://localhost:8000/docs
 
-# 範例模式（不需上傳）
+# 範例模式（不需上傳，v2-v5 為同一份 SLA 基準版的修訂版；v6 是獨立的軟體維護合約範例）
 curl http://localhost:8000/api/v1/contracts/compare/example/v4
+curl http://localhost:8000/api/v1/contracts/compare/example/v6
 
 # 驗證 gold set（high-risk recall 目標 100%）
 python3 -m src.services.contract.evaluate
@@ -95,10 +100,10 @@ POST /api/v1/contracts/negotiate
 ## Demo 建議流程
 
 1. 開啟 `frontend/demo.html`（或 `http://localhost:8000/demo`）
-2. 點「範例模式」→ 選「**v4 保護刪減**」（最戲劇化，6 個高風險）
-3. 展示 Hero 指標（點擊展開說明）→ 展開高風險條款 → 觀察 MAS 標籤
-4. 點「📋 生成對策」展示三層 Playbook
-5. 點「下載 Markdown 報告」
+2. 點「範例模式」→ 選「**v6 違約金費率**」——展示旗艦故事：規則引擎抓到責任上限變化（✓ 規則引擎），但費率從 0.3% 改成中文分數「千分之一」規則引擎看不懂，靠 Verification Agent 語意層補上（⚠ Agent 補漏），且協商對策會引用真實民法第252條
+3. 展示「來源」欄位（✓ 規則引擎／⚠ Agent 補漏）與「⚖ 法律依據」——強調兩層判斷各司其職、協商建議有真實法條佐證
+4. 若要秀 MAS 雙重驗證與最多高風險條款，改選「**v4 保護刪減**」（6 個高風險）
+5. 點「📋 生成對策」展示三層 Playbook；點「下載 Markdown 報告」
 
 ## 環境變數
 
@@ -113,3 +118,5 @@ ANTHROPIC_API_KEY=...    # 備援 LLM（選填）
 - MAS 兩個 Agent 使用同一模型（同質化限制），Phase 2 改用異質模型
 - 無 API Key 時自動使用 template fallback，Demo 不受影響
 - 合約資料不離開本機，無資料外傳疑慮
+- Layer 4 的法條/先例快取為離線建置，執行期純同步讀本地檔案，不即時連網、不依賴 MCP server 存活
+- 已用 3 組真實公司合約（NDA / 軟體採購 / 軟體維護）驗證過，過程中發現並修復多個真實 bug（DOCX 表格內容遺失、並行請求排隊阻塞等），詳見 `next_step_plan.md`、`docs/specs/verification_agent_spec.md`
