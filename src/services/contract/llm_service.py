@@ -9,6 +9,7 @@ Receives structured risk_flags from RiskEngine and produces:
 import json
 import logging
 import os
+from pathlib import Path
 from typing import List, Optional
 from .schemas import RiskFlag, ReportSection, RISK_CODES
 from .mas_service import run_mas
@@ -67,6 +68,32 @@ def _get_legal_citation(risk_code: str, trigger_reason: str = "") -> str:
     return f"{e['law_name']}第{e['article_no']}條：{e['content']}"
 
 
+def _load_skill_section(skill_path: str, section_header: str) -> str:
+    """Extract a named ## section from a skill file. Returns "" on any failure.
+
+    Same plain-text-file pattern as mas_service.py / verifier.py. Kept as a
+    separate copy per module rather than a shared import — consistent with
+    the existing precedent, avoids cross-module coupling for a ~10-line
+    utility. (Worth extracting into a shared helper once there's a 4th
+    caller and the duplication is undeniable; not now.)
+    """
+    try:
+        content = Path(skill_path).read_text(encoding="utf-8")
+        start = content.find(f"## {section_header}")
+        if start == -1:
+            return ""
+        next_section = content.find("\n## ", start + 1)
+        return content[start:next_section if next_section != -1 else len(content)].strip()
+    except Exception:
+        return ""
+
+
+_SKILLS_DIR = Path(__file__).resolve().parents[3] / ".claude" / "skills"
+_SKILL_NEGOTIATION_FRAMEWORK = _load_skill_section(
+    str(_SKILLS_DIR / "negotiation-strategy.md"),
+    "各風險類型的協商框架",
+)
+
 SYSTEM_PROMPT = """你是專業的合約審查助理，專注於台灣企業 SLA / NDA / 採購合約的風險分析。
 
 你的任務是把已由規則引擎標記的風險條款，翻譯成：
@@ -74,24 +101,27 @@ SYSTEM_PROMPT = """你是專業的合約審查助理，專注於台灣企業 SLA
 2. 商業影響（對公司運營的實際影響）
 3. 協商對策（2-3 個可直接用於談判的具體方案）
 
+{skill}
+
 輸出格式為 JSON，欄位：
-{
+{{
   "plain_summary": "一句話白話說明",
   "business_impact": "商業影響說明",
   "negotiation_options": ["對策 A", "對策 B", "對策 C"],
   "legal_basis": "若下方提供了「檢索到的法條」或「相似先例」才填寫，否則留空字串"
-}
+}}
 
 注意：
 - 使用繁體中文
 - 協商對策要具體，不要模糊建議
 - 不要重複 trigger_reason 的用詞，要用更口語的方式說明
+- 上方協商框架若有涵蓋此風險類型，優先參考其「最佳/折衷/底線」結構，但需依實際條款文字調整措辭，不可照抄
 
 若使用者輸入包含「檢索到的法條」或「相似先例」，額外遵守：
 - legal_basis 只能引用「檢索到的法條」欄位裡提供的原文，絕對不可自行引用、推測或編造任何法條號碼或條文——沒有提供就把 legal_basis 留空字串，不得虛構
 - 若有相似先例，協商對策可參考其處理邏輯，但需依本案情境調整用詞，不可照抄
 - 若法條與本風險直接相關，negotiation_options 中至少一項應引用該法條作為談判依據
-"""
+""".format(skill=_SKILL_NEGOTIATION_FRAMEWORK or "（協商框架知識庫未載入，依訓練知識判斷協商對策）")
 
 
 def _build_user_prompt(
