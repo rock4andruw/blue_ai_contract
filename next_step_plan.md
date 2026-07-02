@@ -34,6 +34,12 @@
 - [x] **Verification Agent 實作（`verifier.py`）**：接入 orchestrator.py Step 4b，Layer 1 規則引擎 + Layer 2 LLM 語意補漏交叉核對（Case A/B/C），並新增候選規則紀錄 `candidate_rules.jsonl`（Case C 補漏累積分類，供未來人工升級為正式規則，不自動生成規則）
 - [x] **Diff Engine 涵蓋率修復**：發現並修復純新增/刪除條款因缺條號被靜默丟棄的漏洞（採購合約原本 138 段完全消失，現已全數進入 diffs）
 - [x] **Risk Engine 數字/格式修復**：中文分數（千分之一/百分之/萬分之）、全形／半形 % 符號、費率與上限百分比互相干擾、回應/到場/修復三時限互相干擾（含修復過程中自己引入又抓到的假警報）
+- [x] **Layer 4 落地（2026-07-02）**：法條依據 + 相似先例真的接進協商建議生成，不再只是路線圖：
+  - `legal_citations_cache.json`：用 `mcp-taiwan-legal-db` 真實查回 4 類風險對應的民法/民事訴訟法條文（責任上限、保護條款、不可抗力、管轄法院），離線快取、Demo 執行時純同步讀檔，無即時網路依賴
+  - `precedent_corpus.py` + `precedent_corpus.json`：10 筆手寫合成先例案例（緊扣 v2-v6 demo 涵蓋的風險類型），用 `gemini-embedding-2`（3072 維）算真實向量，本地 cosine similarity 檢索，不是關鍵字比對、也不用架 PostgreSQL
+  - `llm_service.py`：`_build_user_prompt()` 新增「檢索到的法條」「相似先例」區塊；System Prompt 明確規定「只能引用提供的法條原文，不可自行編造」防止 RAG 反而誘發幻覺；`ReportSection`/API/前端新增 `legal_basis` 欄位，有依據才顯示（比照「來源」欄的誠實揭露邏輯）
+  - 實測 v6：協商對策正確引用「民法第216條」真實條文；3 份真實合約 + v4 + v6 全數回歸測試通過
+  - **已知缺口**：Verification Agent 補漏（Case C）的 `risk_code` 統一標成 `RISK_AGENT_AUDITED`，查不到對應法條快取（快取用原始 15 種 risk_code 索引）——欄位留空是安全預設值，非顯示錯誤，暫不修復
 
 ---
 
@@ -83,7 +89,7 @@
 - ❌ 異質模型 MAS（Phase 2：Gemini + Claude 異質設計）
 - ❌ GraphRAG 跨條款依賴（Phase 2-3）
 - ❌ M365 Teams / SharePoint 整合（Phase 3）
-- ❌ **Layer 4：pgvector 語意檢索 + Taiwan Law MCP 法條查詢**（尚未建置，2026-07-02 已完成技術可行性探索，見下方備忘）
+- ✅ **Layer 4：pgvector 語意檢索 + Taiwan Law MCP 法條查詢**（2026-07-02 已建置並接進系統，見下方備忘與「已完成」清單）
 
   > **2026-07-02 技術探索備忘**（若之後要做，直接從這裡接續，不用重新調查）：
   > - **MCP 已找到現成、真實可用的套件**：`pip install mcp-taiwan-legal-db`（[github.com/lawchat-oss/mcp-taiwan-legal-db](https://github.com/lawchat-oss/mcp-taiwan-legal-db)，MIT 授權、免 API key、接法務部全國法規資料庫）。實際測試過用 MCP client 查詢「民法 252 條」，即時打到 `law.moj.gov.tw` 拿到真實條文「約定之違約金額過高者，法院得減至相當之數額。」——不是模擬，是真的查得到。

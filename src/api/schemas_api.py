@@ -39,6 +39,8 @@ class KeyChange(BaseModel):
     mas_confidence: str = "low"        # high | low
     mas_agent_a_view: str = ""
     mas_agent_b_view: str = ""
+    # Layer 4 grounding
+    legal_basis: str = ""              # real Civil Code article, empty if none retrieved
 
 
 class RiskFlagItem(BaseModel):

@@ -1243,6 +1243,9 @@
             <div>${escHtml(c.plain_summary)}</div>
             <div class="field-label">商業影響</div>
             <div>${escHtml(c.business_impact)}</div>
+            ${c.legal_basis ? `
+            <div class="field-label" style="margin-top:14px;">⚖ 法律依據</div>
+            <div style="color:var(--ink-light);font-size:13px;">${escHtml(c.legal_basis)}</div>` : ''}
             ${c.mas_status === 'pending' ? `
             <div class="field-label" style="margin-top:14px;">雙重驗證意見分歧</div>
             <div class="mas-views">

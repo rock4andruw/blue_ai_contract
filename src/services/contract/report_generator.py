@@ -100,6 +100,8 @@ def to_markdown(report: ComparisonReport) -> str:
             lines.append("**協商對策**：\n")
             for opt in s.negotiation_options:
                 lines.append(f"- {opt}")
+            if s.legal_basis:
+                lines.append(f"\n⚖ **法律依據**：{s.legal_basis}")
             lines.append("")
 
     lines.append("\n---\n")

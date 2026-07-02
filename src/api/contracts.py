@@ -108,6 +108,7 @@ def _build_response(
             mas_confidence=s.mas_confidence,
             mas_agent_a_view=s.mas_agent_a_view,
             mas_agent_b_view=s.mas_agent_b_view,
+            legal_basis=s.legal_basis,
         )
         for s in report.key_sections
     ]

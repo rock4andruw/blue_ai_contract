@@ -6,10 +6,38 @@ Receives structured risk_flags from RiskEngine and produces:
 - 2-3 negotiation options per high-risk flag
 """
 
+import json
+import logging
 import os
 from typing import List, Optional
 from .schemas import RiskFlag, ReportSection, RISK_CODES
 from .mas_service import run_mas
+from .precedent_corpus import find_similar_precedent
+
+log = logging.getLogger(__name__)
+
+_LEGAL_CACHE_PATH = os.path.join(os.path.dirname(__file__), "legal_citations_cache.json")
+_legal_cache: Optional[dict] = None
+
+
+def _get_legal_citation(risk_code: str) -> str:
+    """Look up a real Civil Code article for risk_code from the offline
+    cache built via mcp-taiwan-legal-db (see next_step_plan.md). Never
+    calls the MCP server live — synchronous file read only, no network
+    dependency in the request path. Returns "" if nothing cached for this
+    risk_code (most categories have no clean statute match; that's fine)."""
+    global _legal_cache
+    if _legal_cache is None:
+        try:
+            with open(_LEGAL_CACHE_PATH, encoding="utf-8") as f:
+                _legal_cache = json.load(f)
+        except (OSError, json.JSONDecodeError):
+            _legal_cache = {}
+    entries = _legal_cache.get(risk_code) or []
+    if not entries:
+        return ""
+    e = entries[0]
+    return f"{e['law_name']}第{e['article_no']}條：{e['content']}"
 
 
 SYSTEM_PROMPT = """你是專業的合約審查助理，專注於台灣企業 SLA / NDA / 採購合約的風險分析。
@@ -23,19 +51,32 @@ SYSTEM_PROMPT = """你是專業的合約審查助理，專注於台灣企業 SLA
 {
   "plain_summary": "一句話白話說明",
   "business_impact": "商業影響說明",
-  "negotiation_options": ["對策 A", "對策 B", "對策 C"]
+  "negotiation_options": ["對策 A", "對策 B", "對策 C"],
+  "legal_basis": "若下方提供了「檢索到的法條」或「相似先例」才填寫，否則留空字串"
 }
 
 注意：
 - 使用繁體中文
 - 協商對策要具體，不要模糊建議
 - 不要重複 trigger_reason 的用詞，要用更口語的方式說明
+
+若使用者輸入包含「檢索到的法條」或「相似先例」，額外遵守：
+- legal_basis 只能引用「檢索到的法條」欄位裡提供的原文，絕對不可自行引用、推測或編造任何法條號碼或條文——沒有提供就把 legal_basis 留空字串，不得虛構
+- 若有相似先例，協商對策可參考其處理邏輯，但需依本案情境調整用詞，不可照抄
+- 若法條與本風險直接相關，negotiation_options 中至少一項應引用該法條作為談判依據
 """
 
 
-def _build_user_prompt(flag: RiskFlag, reference_clause: str = "") -> str:
+def _build_user_prompt(
+    flag: RiskFlag,
+    reference_clause: str = "",
+    legal_citation: str = "",
+    precedent_case: str = "",
+) -> str:
     risk_name = RISK_CODES.get(flag.risk_code, flag.risk_code)
     ref_section = f"\n參考標準條款：\n{reference_clause}" if reference_clause else ""
+    legal_section = f"\n檢索到的法條：\n{legal_citation}" if legal_citation else ""
+    precedent_section = f"\n相似先例：\n{precedent_case}" if precedent_case else ""
     return f"""風險類型：{risk_name}
 風險等級：{flag.risk_level}
 觸發原因：{flag.trigger_reason}
@@ -45,7 +86,7 @@ def _build_user_prompt(flag: RiskFlag, reference_clause: str = "") -> str:
 
 修改後條款：
 {flag.new_text or '（已刪除）'}
-{ref_section}
+{ref_section}{legal_section}{precedent_section}
 
 請產出 JSON 格式的分析結果。"""
 
@@ -55,15 +96,32 @@ def analyze_flag(flag: RiskFlag, reference_clause: str = "", api_key: Optional[s
     gemini_key = os.environ.get("GEMINI_API_KEY", "")
     claude_key = api_key or os.environ.get("ANTHROPIC_API_KEY", "")
 
+    # Layer 4 grounding: synchronous cache lookup (legal citation) + a single
+    # embedding call (precedent similarity) — neither blocks on a live MCP
+    # subprocess or PostgreSQL. Best-effort: missing/failed lookups just
+    # mean an ungrounded (but still valid) negotiation suggestion, same as
+    # before Layer 4 existed.
+    legal_citation = _get_legal_citation(flag.risk_code)
+    precedent = None
     if gemini_key:
-        return _analyze_with_gemini(flag, reference_clause, gemini_key)
+        try:
+            precedent = find_similar_precedent(flag.trigger_reason, gemini_key=gemini_key)
+        except Exception as e:
+            log.warning(f"precedent retrieval failed: {e}")
+    precedent_text = precedent["case_summary"] + "\n過去協商結果：" + precedent["negotiation_stance"] if precedent else ""
+
+    if gemini_key:
+        return _analyze_with_gemini(flag, reference_clause, gemini_key, legal_citation, precedent_text)
     elif claude_key:
-        return _analyze_with_claude(flag, reference_clause, claude_key)
+        return _analyze_with_claude(flag, reference_clause, claude_key, legal_citation, precedent_text)
     else:
         return _analyze_with_template(flag)
 
 
-def _analyze_with_gemini(flag: RiskFlag, reference_clause: str, api_key: str) -> ReportSection:
+def _analyze_with_gemini(
+    flag: RiskFlag, reference_clause: str, api_key: str,
+    legal_citation: str = "", precedent_text: str = "",
+) -> ReportSection:
     try:
         from google import genai
         from google.genai import types
@@ -72,11 +130,10 @@ def _analyze_with_gemini(flag: RiskFlag, reference_clause: str, api_key: str) ->
 
     client = genai.Client(api_key=api_key)
 
-    import json
     try:
         response = client.models.generate_content(
             model="gemini-3.1-flash-lite",
-            contents=_build_user_prompt(flag, reference_clause),
+            contents=_build_user_prompt(flag, reference_clause, legal_citation, precedent_text),
             config=types.GenerateContentConfig(system_instruction=SYSTEM_PROMPT),
         )
         text = response.text.strip()
@@ -85,8 +142,7 @@ def _analyze_with_gemini(flag: RiskFlag, reference_clause: str, api_key: str) ->
         data = json.loads(text[start:end])
     except Exception as e:
         # Fallback to template on quota / network errors
-        import logging
-        logging.warning(f"Gemini API error ({type(e).__name__}): {e} — falling back to template")
+        log.warning(f"Gemini API error ({type(e).__name__}): {e} — falling back to template")
         return _analyze_with_template(flag)
 
     return ReportSection(
@@ -97,10 +153,14 @@ def _analyze_with_gemini(flag: RiskFlag, reference_clause: str, api_key: str) ->
         plain_summary=data.get("plain_summary", ""),
         business_impact=data.get("business_impact", ""),
         negotiation_options=data.get("negotiation_options", []),
+        legal_basis=data.get("legal_basis", "") or "",
     )
 
 
-def _analyze_with_claude(flag: RiskFlag, reference_clause: str, api_key: str) -> ReportSection:
+def _analyze_with_claude(
+    flag: RiskFlag, reference_clause: str, api_key: str,
+    legal_citation: str = "", precedent_text: str = "",
+) -> ReportSection:
     try:
         import anthropic
     except ImportError:
@@ -111,10 +171,9 @@ def _analyze_with_claude(flag: RiskFlag, reference_clause: str, api_key: str) ->
         model="claude-sonnet-4-6",
         max_tokens=800,
         system=SYSTEM_PROMPT,
-        messages=[{"role": "user", "content": _build_user_prompt(flag, reference_clause)}],
+        messages=[{"role": "user", "content": _build_user_prompt(flag, reference_clause, legal_citation, precedent_text)}],
     )
 
-    import json
     text = message.content[0].text.strip()
     # Extract JSON from response
     start = text.find("{")
@@ -129,6 +188,7 @@ def _analyze_with_claude(flag: RiskFlag, reference_clause: str, api_key: str) ->
         plain_summary=data.get("plain_summary", ""),
         business_impact=data.get("business_impact", ""),
         negotiation_options=data.get("negotiation_options", []),
+        legal_basis=data.get("legal_basis", "") or "",
     )
 
 

@@ -89,6 +89,8 @@ class ReportSection:
     mas_confidence: str = "low"       # high | low
     mas_agent_a_view: str = ""        # strict agent reasoning
     mas_agent_b_view: str = ""        # balanced agent reasoning
+    # Layer 4 (grounding, defaults = no citation/precedent retrieved)
+    legal_basis: str = ""             # real Civil Code article, only if retrieved — never LLM-invented
 
 
 @dataclass
