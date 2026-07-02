@@ -9,6 +9,7 @@ from pathlib import Path
 from typing import Optional
 
 from fastapi import APIRouter, HTTPException, UploadFile, File, Form, Depends
+from fastapi.concurrency import run_in_threadpool
 from fastapi.responses import JSONResponse
 
 from .schemas_api import CompareResponse, KeyChange, RiskFlagItem, ReviewAdvice, NegotiateRequest, NegotiateResponse, PlaybookTier
@@ -175,7 +176,13 @@ async def compare_contracts(
         rev_path = f_rev.name
 
     try:
-        result = _build_response(
+        # _build_response is fully synchronous (blocking file I/O + Gemini/
+        # Claude SDK calls). Calling it directly from an async endpoint would
+        # block the single event loop for the whole pipeline duration,
+        # serializing every other concurrent request behind it. Running it
+        # in FastAPI's threadpool lets multiple comparisons actually overlap.
+        result = await run_in_threadpool(
+            _build_response,
             original_path=orig_path,
             revised_path=rev_path,
             original_filename=original_file.filename or "original",
@@ -197,7 +204,7 @@ async def compare_contracts(
     response_model=CompareResponse,
     summary="範例模式（v2/v3/v4/v5/v6）",
 )
-async def compare_example(
+def compare_example(
     example_id: str,
     api_key: Optional[str] = Depends(_get_api_key),
 ):
@@ -205,6 +212,13 @@ async def compare_example(
 
     v2-v5 皆為「SLA-like Base Contract v1」的修訂版；v6 是獨立的合成軟體維護
     合約（見 EXAMPLE_BASE_OVERRIDE），有自己的原始版，不與 v1 共用基準。
+
+    Deliberately a plain `def`, not `async def`: this function has no
+    `await` calls (unlike compare_contracts, which awaits UploadFile.read()).
+    FastAPI automatically runs plain-def path operations in a worker
+    threadpool, so concurrent example requests can actually overlap instead
+    of serializing behind the single event loop (see run_in_threadpool usage
+    in compare_contracts for the async-endpoint equivalent).
     """
     if example_id not in EXAMPLE_CONTRACTS:
         raise HTTPException(
