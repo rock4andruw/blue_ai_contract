@@ -167,7 +167,10 @@ def build_corpus_embeddings(gemini_key: Optional[str] = None) -> None:
         print(f"embedded: {case['risk_code']} — {case['case_summary'][:30]}...")
 
     with open(CORPUS_PATH, "w", encoding="utf-8") as f:
-        json.dump(entries, f, ensure_ascii=False, indent=2)
+        # No indent: each entry's embedding is a 3072-float array, and
+        # pretty-printing puts one float per line -- indent=2 bloats this
+        # file to ~600KB for no benefit (nobody reads embeddings visually).
+        json.dump(entries, f, ensure_ascii=False)
     print(f"\nSaved {len(entries)} entries to {CORPUS_PATH}")
 
 
