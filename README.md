@@ -8,7 +8,7 @@ Blue-AI 合約智能比對助理，讓法務與 PM 在 30 分鐘內完成過去�
 
 **專案規劃**: 詳見 [PROJECT_PLAN.md](PROJECT_PLAN.md)  
 **架構設計**: 詳見 [docs/architecture/service_design.md](docs/architecture/service_design.md)、[docs/architecture/系統架構_mermaid.md](docs/architecture/系統架構_mermaid.md)（Mermaid 完整架構圖）  
-**當前狀態**: 🟢 Phase 1.5 + Verification Agent（Layer 2）+ Layer 4（法律依據檢索）完成，2026-07-02
+**當前狀態**: 🟢 Phase 1.5 + Verification Agent（Layer 2）+ Layer 3（法律依據檢索）完成，2026-07-02
 
 ---
 
@@ -45,7 +45,7 @@ Blue-AI 合約智能比對助理，讓法務與 PM 在 30 分鐘內完成過去�
 - 三層協商對策：🟢 首選 / 🟡 折衷 / 🔴 底線 + 替換條款文字
 - 支援 Gemini 3.1 Flash Lite（主）/ Claude Sonnet 4.6（備）/ template fallback
 
-### 協商建議法律依據檢索（Layer 4）
+### 協商建議法律依據檢索（Layer 3）
 
 - **真實法條**：離線用 `mcp-taiwan-legal-db`（MIT 授權、免 API key，接法務部全國法規資料庫）查回民法／民事訴訟法條文，快取於 `legal_citations_cache.json`，執行時純同步讀檔，無即時網路依賴
 - **相似先例**：用 `gemini-embedding-2` 對合成先例語料庫（`precedent_corpus.py`）做真實向量檢索（cosine similarity），不是關鍵字比對，也不需要 PostgreSQL
@@ -112,7 +112,7 @@ ANTHROPIC_API_KEY=...    # 備援 LLM，Gemini 沒設定或呼叫失敗時使用
 
 **LLM 優先順序**：Gemini（主）→ Claude（備）→ template fallback（兩者都沒設定時，仍可產出完整報告，只是協商建議是預先寫好的樣板，不是即時生成）。
 
-**Layer 4 法條快取（選用，已內建現成快取，通常不需重新產生）**：`legal_citations_cache.json`、`precedent_corpus.json` 已經是離線建置好的真實資料，直接使用即可。如需重新產生先例語料庫的向量（例如修改了 `precedent_corpus.py` 裡的案例內容），執行：
+**Layer 3 法條快取（選用，已內建現成快取，通常不需重新產生）**：`legal_citations_cache.json`、`precedent_corpus.json` 已經是離線建置好的真實資料，直接使用即可。如需重新產生先例語料庫的向量（例如修改了 `precedent_corpus.py` 裡的案例內容），執行：
 
 ```bash
 python -m src.services.contract.precedent_corpus   # 需要 GEMINI_API_KEY
@@ -144,10 +144,10 @@ bule-ai-team/
 │       ├── diff_engine.py             # 差異比對
 │       ├── risk_engine.py             # 規則引擎（Layer 1，15 條規則）
 │       ├── verifier.py                # Verification Agent（Layer 2，LLM 語意補漏）
-│       ├── llm_service.py             # LLM 摘要與協商建議 + Layer 4 依據檢索
-│       ├── precedent_corpus.py        # Layer 4：先例語料庫 + 向量檢索邏輯
-│       ├── precedent_corpus.json      # Layer 4：離線建置好的先例向量快取
-│       ├── legal_citations_cache.json # Layer 4：離線查回的真實法條快取
+│       ├── llm_service.py             # LLM 摘要與協商建議 + Layer 3 依據檢索
+│       ├── precedent_corpus.py        # Layer 3：先例語料庫 + 向量檢索邏輯
+│       ├── precedent_corpus.json      # Layer 3：離線建置好的先例向量快取
+│       ├── legal_citations_cache.json # Layer 3：離線查回的真實法條快取
 │       ├── mas_service.py             # MAS 雙重驗證（Agent A/B + Judge）
 │       ├── report_generator.py        # 報告輸出
 │       ├── orchestrator.py            # 全流程串接
@@ -201,7 +201,7 @@ bule-ai-team/
       ↓
 [Verification Agent] → LLM 語意補漏（Layer 2），與 Layer 1 交叉核對
       ↓
-[Layer 4]       → 查真實法條快取 + 查相似先例（向量檢索）
+[Layer 3]       → 查真實法條快取 + 查相似先例（向量檢索）
       ↓
 [LLM Service]   → 白話摘要 / 重點收斂 / 協商對策（含法律依據）
       ↓
@@ -224,7 +224,7 @@ bule-ai-team/
 | 文件解析 | pdfplumber + python-docx（含表格交錯讀取）+ 原生 MD parser |
 | 差異演算法 | difflib SequenceMatcher + Needleman-Wunsch DP |
 | 風險分類 | Rule-based（Layer 1，15 條規則，純 Python）+ LLM 語意補漏（Layer 2） |
-| 協商依據檢索 | `mcp-taiwan-legal-db` 離線法條快取 + `gemini-embedding-2` 本地向量檢索（Layer 4） |
+| 協商依據檢索 | `mcp-taiwan-legal-db` 離線法條快取 + `gemini-embedding-2` 本地向量檢索（Layer 3） |
 | MAS | ThreadPoolExecutor + Judge 矩陣（gap-based） |
 | 後端 | FastAPI（`src/api/`，`run_in_threadpool` 確保並行請求不互相阻塞） |
 
@@ -252,7 +252,7 @@ bule-ai-team/
 - [x] MAS Phase 1.5（Agent A/B 雙重驗證 + Judge 矩陣）
 - [x] NDA 測試合約（v1 甲方版 + v2 乙方修改版）
 - [x] Verification Agent（Layer 2，語意補漏 + 交叉核對）
-- [x] Layer 4 法律依據檢索（真實法條快取 + 先例向量檢索）
+- [x] Layer 3 法律依據檢索（真實法條快取 + 先例向量檢索）
 - [x] 真實公司合約驗證（NDA / 軟體採購 / 軟體維護）
 - [x] 邊界測試（空條款 / 超長條款 / 表格條款）+ 壓測（並行請求）
 - [ ] 週次 3：簡報製作、Demo 流程預演

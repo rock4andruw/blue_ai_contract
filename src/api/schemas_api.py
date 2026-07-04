@@ -39,7 +39,7 @@ class KeyChange(BaseModel):
     mas_confidence: str = "low"        # high | low
     mas_agent_a_view: str = ""
     mas_agent_b_view: str = ""
-    # Layer 4 grounding
+    # Layer 3 grounding
     legal_basis: str = ""              # LLM-synthesized sentence citing the retrieved sources below
     legal_citation_raw: str = ""       # raw MCP-sourced Civil Code article text, unedited
     precedent_raw: str = ""            # raw vector-retrieved precedent case text, unedited
@@ -82,6 +82,40 @@ class NegotiateResponse(BaseModel):
     clause_id: str
     risk_code: str
     playbook: PlaybookTier
+
+
+class AskRequest(BaseModel):
+    """報告內問答：問題錨定在已產出的 key_changes 內容，不做開放式回答。"""
+    key_changes: List[KeyChange] = Field(..., description="當次比對報告的重點變更清單")
+    question: str = Field(..., description="使用者針對報告內容提出的問題")
+
+
+class AskResponse(BaseModel):
+    answer: str = Field(..., description="根據報告內容生成的回答；查無相關資訊時誠實告知，不編造")
+    grounded: bool = Field(..., description="是否在報告內容中找到相關依據")
+
+
+class NegotiationMatrixRequest(BaseModel):
+    """協商矩陣：對現有高風險/中風險條款批次生成三層對策，組成對照表。"""
+    key_changes: List[KeyChange] = Field(..., description="要生成矩陣的條款清單（通常是 high/medium 風險項目）")
+
+
+class NegotiationMatrixRow(BaseModel):
+    clause_id: str
+    risk_level: str
+    risk_name: str
+    counterparty_ask: str      # 對方訴求（修改後條文白話摘要）
+    our_position: str          # 我方政策／首選立場
+    our_position_clause: str
+    compromise: str            # 建議折衷方案
+    compromise_clause: str
+    redline: str                # 底線
+    legal_basis: str = ""
+
+
+class NegotiationMatrixResponse(BaseModel):
+    rows: List[NegotiationMatrixRow]
+    markdown_table: str
 
 
 class CompareResponse(BaseModel):

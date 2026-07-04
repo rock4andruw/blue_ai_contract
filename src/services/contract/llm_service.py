@@ -153,11 +153,11 @@ def analyze_flag(flag: RiskFlag, reference_clause: str = "", api_key: Optional[s
     gemini_key = os.environ.get("GEMINI_API_KEY", "")
     claude_key = api_key or os.environ.get("ANTHROPIC_API_KEY", "")
 
-    # Layer 4 grounding: synchronous cache lookup (legal citation) + a single
+    # Layer 3 grounding: synchronous cache lookup (legal citation) + a single
     # embedding call (precedent similarity) — neither blocks on a live MCP
     # subprocess or PostgreSQL. Best-effort: missing/failed lookups just
     # mean an ungrounded (but still valid) negotiation suggestion, same as
-    # before Layer 4 existed.
+    # before Layer 3 existed.
     legal_citation = _get_legal_citation(flag.risk_code, flag.trigger_reason)
     precedent = None
     if gemini_key:
@@ -179,7 +179,7 @@ def analyze_flag(flag: RiskFlag, reference_clause: str = "", api_key: Optional[s
         section = _analyze_with_template(flag)
 
     # Attach the raw retrieved sources regardless of which branch produced the
-    # section, so the UI can show "what Layer 4 actually found" independent
+    # section, so the UI can show "what Layer 3 actually found" independent
     # of how the LLM chose to word legal_basis (or whether it wrote one at all).
     section.legal_citation_raw = legal_citation
     section.precedent_raw = precedent_display
@@ -449,3 +449,108 @@ def generate_sections(
     if return_mode:
         return sections, mode
     return sections
+
+
+# ------------------------------------------------------------------
+# Report Q&A: answer user questions strictly grounded in an already-
+# generated report's key_changes. Never falls back to training
+# knowledge — if the report doesn't cover the question, says so
+# honestly instead of guessing. No new data source, no new risk
+# judgment; purely a "structured data → natural language" transcript
+# of what analyze_flag()/run_mas() already computed for this report.
+# ------------------------------------------------------------------
+
+ASK_SYSTEM_PROMPT = """你是合約審查報告的問答助理。
+
+你只能根據下方提供的報告內容回答問題。報告內容沒有提到的資訊，一律回答「這份報告沒有相關資訊」，不可推測、不可引用訓練知識、不可編造。
+
+使用繁體中文，簡潔直接回答，不要重複整段報告內容。
+"""
+
+
+def _build_report_context(key_changes: List[dict]) -> str:
+    """Format key_changes into readable text blocks for the Ask prompt."""
+    parts = []
+    for c in key_changes:
+        block = [
+            f"【條款 {c.get('clause_id', '')}】{c.get('risk_name', '')}（風險等級：{c.get('risk_level', '')}）",
+            f"說明：{c.get('plain_summary', '')}",
+            f"商業影響：{c.get('business_impact', '')}",
+        ]
+        if c.get("legal_basis"):
+            block.append(f"法律依據：{c['legal_basis']}")
+        if c.get("mas_status") == "pending":
+            block.append(
+                f"雙重驗證意見分歧：嚴格審查認為「{c.get('mas_agent_a_view', '')}」；"
+                f"平衡審查認為「{c.get('mas_agent_b_view', '')}」"
+            )
+        elif c.get("mas_status") == "confirmed":
+            block.append("雙重驗證：兩位 Agent 意見一致確認")
+        parts.append("\n".join(block))
+    return "\n\n".join(parts)
+
+
+def answer_report_question(
+    key_changes: List[dict], question: str, api_key: Optional[str] = None
+) -> dict:
+    """Answer a user question strictly grounded in the report's key_changes.
+
+    Returns {"answer": str, "grounded": bool}.
+    """
+    gemini_key = os.environ.get("GEMINI_API_KEY", "")
+    claude_key = api_key or os.environ.get("ANTHROPIC_API_KEY", "")
+
+    if not key_changes:
+        return {"answer": "目前沒有報告內容可供查詢。", "grounded": False}
+
+    context = _build_report_context(key_changes)
+    prompt = f"報告內容：\n{context}\n\n使用者問題：{question}\n\n請只根據上方報告內容回答；沒有相關資訊就誠實說明。"
+
+    if gemini_key:
+        return _ask_with_gemini(prompt, gemini_key)
+    elif claude_key:
+        return _ask_with_claude(prompt, claude_key)
+    else:
+        return {"answer": "目前沒有可用的 LLM，無法回答問題。", "grounded": False}
+
+
+def _ask_with_gemini(prompt: str, api_key: str) -> dict:
+    try:
+        from google import genai
+        from google.genai import types
+    except ImportError:
+        return {"answer": "google-genai 套件未安裝，無法回答問題。", "grounded": False}
+    try:
+        client = genai.Client(api_key=api_key)
+        response = client.models.generate_content(
+            model="gemini-3.1-flash-lite",
+            contents=prompt,
+            config=types.GenerateContentConfig(system_instruction=ASK_SYSTEM_PROMPT),
+        )
+        text = response.text.strip()
+        grounded = "沒有相關資訊" not in text
+        return {"answer": text, "grounded": grounded}
+    except Exception as e:
+        log.warning(f"Ask Gemini error: {e}")
+        return {"answer": "查詢時發生錯誤，請稍後再試。", "grounded": False}
+
+
+def _ask_with_claude(prompt: str, api_key: str) -> dict:
+    try:
+        import anthropic
+    except ImportError:
+        return {"answer": "anthropic 套件未安裝，無法回答問題。", "grounded": False}
+    try:
+        client = anthropic.Anthropic(api_key=api_key)
+        message = client.messages.create(
+            model="claude-sonnet-4-6",
+            max_tokens=500,
+            system=ASK_SYSTEM_PROMPT,
+            messages=[{"role": "user", "content": prompt}],
+        )
+        text = message.content[0].text.strip()
+        grounded = "沒有相關資訊" not in text
+        return {"answer": text, "grounded": grounded}
+    except Exception as e:
+        log.warning(f"Ask Claude error: {e}")
+        return {"answer": "查詢時發生錯誤，請稍後再試。", "grounded": False}

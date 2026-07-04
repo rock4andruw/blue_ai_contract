@@ -12,15 +12,18 @@ from fastapi import APIRouter, HTTPException, UploadFile, File, Form, Depends
 from fastapi.concurrency import run_in_threadpool
 from fastapi.responses import JSONResponse
 
-from .schemas_api import CompareResponse, KeyChange, RiskFlagItem, ReviewAdvice, NegotiateRequest, NegotiateResponse, PlaybookTier
+from .schemas_api import (
+    CompareResponse, KeyChange, RiskFlagItem, ReviewAdvice, NegotiateRequest, NegotiateResponse, PlaybookTier,
+    AskRequest, AskResponse, NegotiationMatrixRequest, NegotiationMatrixResponse, NegotiationMatrixRow,
+)
 from ..services.contract.orchestrator import compare as run_pipeline
 from ..services.contract.parser import ContractParser
 from ..services.contract.alignment import ContractAligner
 from ..services.contract.diff_engine import DiffEngine
 from ..services.contract.risk_engine import RiskEngine
 from ..services.contract.verifier import VerificationAgent, cross_check_risks, RISK_CODE_AGENT
-from ..services.contract.llm_service import generate_sections
-from ..services.contract.negotiate_service import generate_playbook
+from ..services.contract.llm_service import generate_sections, answer_report_question
+from ..services.contract.negotiate_service import generate_playbook, generate_matrix
 from ..services.contract.report_generator import build_report, to_markdown, LEVEL_ZH
 from ..services.contract.schemas import RISK_CODES
 
@@ -270,6 +273,31 @@ async def negotiate_clause(req: NegotiateRequest):
             redline=result.get("redline", ""),
         ),
     )
+
+
+# ── Endpoint: report Q&A ──────────────────────────────────────────────────────
+
+@router.post("/ask", response_model=AskResponse, summary="報告內問答（錨定在已產出內容）")
+async def ask_report(req: AskRequest, api_key: Optional[str] = Depends(_get_api_key)):
+    """針對當次比對報告的內容提問。只根據報告內容回答，查無資訊就誠實告知，不編造。"""
+    result = await run_in_threadpool(
+        answer_report_question,
+        key_changes=[kc.dict() for kc in req.key_changes],
+        question=req.question,
+        api_key=api_key,
+    )
+    return AskResponse(answer=result["answer"], grounded=result["grounded"])
+
+
+# ── Endpoint: negotiation matrix ─────────────────────────────────────────────
+
+@router.post("/negotiate/matrix", response_model=NegotiationMatrixResponse, summary="協商矩陣（批次生成對照表）")
+async def negotiate_matrix(req: NegotiationMatrixRequest):
+    """對多個條款批次生成三層對策，組成「對方訴求／我方政策／建議折衷方案／底線」對照表。"""
+    items = [kc.dict() for kc in req.key_changes]
+    result = await run_in_threadpool(generate_matrix, items)
+    rows = [NegotiationMatrixRow(**r) for r in result["rows"]]
+    return NegotiationMatrixResponse(rows=rows, markdown_table=result["markdown_table"])
 
 
 # ── Endpoint: health check ────────────────────────────────────────────────────

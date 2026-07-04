@@ -276,3 +276,64 @@ def _llm_claude(api_key, risk_code, risk_name, old_text, new_text, change_type, 
     except Exception as e:
         logging.warning(f"Negotiate Claude error: {e} — using static playbook")
         return static
+
+
+# ------------------------------------------------------------------
+# Negotiation matrix: batch-generate playbooks for multiple clauses and
+# assemble a printable table (對方訴求 / 我方政策 / 建議折衷方案 / 底線 /
+# 法律依據). No new judgment logic — reuses generate_playbook() per
+# clause; this is purely an aggregation + rendering layer over data the
+# system already computes.
+# ------------------------------------------------------------------
+
+def _sanitize_cell(text: str) -> str:
+    """Keep markdown table cells on one line and free of unescaped pipes."""
+    return (text or "").replace("|", "\\|").replace("\n", " ").strip()
+
+
+def generate_matrix(items: list[dict]) -> dict:
+    """Generate a negotiation matrix from a list of clause dicts.
+
+    Each item needs: clause_id, risk_code, risk_name, risk_level, old_text,
+    new_text, change_type, plain_summary (對方訴求), legal_basis (optional).
+    """
+    rows = []
+    for item in items:
+        playbook = generate_playbook(
+            clause_id=item.get("clause_id", ""),
+            risk_code=item.get("risk_code", ""),
+            risk_name=item.get("risk_name", ""),
+            old_text=item.get("old_text", ""),
+            new_text=item.get("new_text", ""),
+            change_type=item.get("change_type", ""),
+        )
+        rows.append({
+            "clause_id": item.get("clause_id", ""),
+            "risk_level": item.get("risk_level", ""),
+            "risk_name": item.get("risk_name", ""),
+            "counterparty_ask": item.get("plain_summary", ""),
+            "our_position": playbook.get("tier1", ""),
+            "our_position_clause": playbook.get("tier1_clause", ""),
+            "compromise": playbook.get("tier2", ""),
+            "compromise_clause": playbook.get("tier2_clause", ""),
+            "redline": playbook.get("redline", ""),
+            "legal_basis": item.get("legal_basis", ""),
+        })
+    return {"rows": rows, "markdown_table": _render_matrix_markdown(rows)}
+
+
+def _render_matrix_markdown(rows: list[dict]) -> str:
+    level_zh = {"high": "高", "medium": "中", "low": "低"}
+    lines = [
+        "| 條款 | 風險 | 對方訴求 | 我方政策（首選） | 建議折衷方案 | 底線 | 法律依據 |",
+        "|---|---|---|---|---|---|---|",
+    ]
+    for r in rows:
+        level = level_zh.get(r["risk_level"], r["risk_level"])
+        lines.append(
+            f"| {_sanitize_cell(r['clause_id'])} | {level} "
+            f"| {_sanitize_cell(r['counterparty_ask'])} | {_sanitize_cell(r['our_position'])} "
+            f"| {_sanitize_cell(r['compromise'])} | {_sanitize_cell(r['redline'])} "
+            f"| {_sanitize_cell(r['legal_basis']) or '—'} |"
+        )
+    return "\n".join(lines)

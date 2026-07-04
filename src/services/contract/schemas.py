@@ -5,7 +5,7 @@ from typing import Any, Dict, List, Literal, Optional
 
 
 # ------------------------------------------------------------------
-# Layer 1: Parser output (re-exported for convenience)
+# Stage 1: Parser output (re-exported for convenience)
 # ------------------------------------------------------------------
 
 @dataclass
@@ -20,7 +20,7 @@ class Clause:
 
 
 # ------------------------------------------------------------------
-# Layer 2: Alignment output
+# Stage 2: Alignment output
 # ------------------------------------------------------------------
 
 @dataclass
@@ -34,7 +34,7 @@ class MatchBlock:
 
 
 # ------------------------------------------------------------------
-# Layer 3: Diff output
+# Stage 3: Diff output
 # ------------------------------------------------------------------
 
 ChangeType = Literal["modified", "inserted", "deleted", "unchanged"]
@@ -51,7 +51,7 @@ class DiffItem:
 
 
 # ------------------------------------------------------------------
-# Layer 4: Risk engine output
+# Stage 4: Risk engine output
 # ------------------------------------------------------------------
 
 RiskLevel = Literal["high", "medium", "low", "none"]
@@ -71,7 +71,7 @@ class RiskFlag:
 
 
 # ------------------------------------------------------------------
-# Layer 5: LLM / Report output
+# Stage 5: LLM / Report output
 # ------------------------------------------------------------------
 
 @dataclass
@@ -89,7 +89,7 @@ class ReportSection:
     mas_confidence: str = "low"       # high | low
     mas_agent_a_view: str = ""        # strict agent reasoning
     mas_agent_b_view: str = ""        # balanced agent reasoning
-    # Layer 4 (grounding, defaults = no citation/precedent retrieved)
+    # Layer 3 (grounding, defaults = no citation/precedent retrieved)
     legal_basis: str = ""             # LLM-synthesized sentence citing the retrieved sources below
     legal_citation_raw: str = ""      # raw MCP-sourced Civil Code article text, unedited
     precedent_raw: str = ""           # raw vector-retrieved precedent case text, unedited
