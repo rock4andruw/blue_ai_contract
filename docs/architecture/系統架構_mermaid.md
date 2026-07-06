@@ -12,7 +12,7 @@ subgraph P1["🟢 Phase 1 — MVP（已完成）"]
     end
 
     subgraph APIL["API 層（API）"]
-        API["🔌 FastAPI（threadpool 化）\nPOST /api/v1/contracts/compare\nGET /example/{v2-v6}\nPOST /api/v1/contracts/negotiate"]
+        API["🔌 FastAPI（threadpool 化）\nPOST /api/v1/contracts/compare\nGET /example/{v2-v6}\nPOST /api/v1/contracts/negotiate\nPOST /ask · POST /negotiate/matrix"]
     end
 
     subgraph PIPELINE["核心管道（PIPELINE）"]
@@ -24,7 +24,7 @@ subgraph P1["🟢 Phase 1 — MVP（已完成）"]
         VA["🔍 Verification Agent（Layer 2）\nLLM 語意補漏，只讀變動條款、不讀全文\n與規則引擎交叉核對，避免重複判斷\n疑似漏判案例自動記錄，供人工複核（不自動生規則）"]
         LLM["🤖 LLM Service\nGemini 3.1 Flash Lite（主）\nClaude Sonnet 4.6 / Haiku 4.5（備）\n無 API Key 時自動降級為內建模板\n統整摘要與原始檢索資料分開呈現，不混淆"]
 
-        subgraph MAS["🟡 Phase 1.5 — MAS 雙重驗證（已完成，只跑高風險 flag）"]
+    subgraph MAS["🟡 Phase 1.5 — MAS 雙重驗證（已完成，只跑高風險 flag）"]
             direction LR
             MA["🔴 Agent A（嚴格）\n極度保守買方法律顧問\n知識庫：最壞情況場景表"]
             MB["🟡 Agent B（平衡）\n促成交易商務法務\n知識庫：台灣 SaaS 業界慣例"]
@@ -33,13 +33,21 @@ subgraph P1["🟢 Phase 1 — MVP（已完成）"]
             MB -->|ThreadPoolExecutor 平行| JG
         end
 
-        RPT["📊 Report Generator\n報告輸出 · 審閱建議分層 · 雙重驗證標籤整合\nUI：法律依據摘要 + 原始檢索資料原文\n（法條原文框 / 相似先例框，分開顯示）"]
+    RPT["📊 Report Generator\n報告輸出 · 審閱建議分層 · 雙重驗證標籤整合\nUI：法律依據摘要 + 原始檢索資料原文\n（法條原文框 / 相似先例框，分開顯示）"]
         PARSER --> ALIGN --> DIFF --> RISK --> VA --> LLM
         LLM -->|高風險 flag，交叉驗證\n（LLM 分析後才觸發）| MA
         LLM -->|高風險 flag，交叉驗證| MB
         JG --> RPT
         PLAYBOOK["📋 三層協商對策（按需，非主流程）\n13 種風險類型 × 首選／折衷／底線立場\n知識庫可編輯，格式錯誤自動退回內建版本\n按鈕觸發，不佔用初次比對時間"]
     end
+
+    subgraph ASKMATRIX["💬 對話式功能（2026-07-05 新增，按需，非主流程）"]
+            direction LR
+            ASK["💬 報告問答（Ask）\n只根據 key_changes 回答，查無資訊誠實拒答\n含法條原文＋先例相似度（2026-07-06 補上原始欄位）"]
+            MATRIX["📋 協商矩陣（Matrix）\n多筆高風險條款批次生成\n訴求／立場／折衷／底線／法律依據 對照表\n可直接列印帶去談判"]
+        end
+        RPT -->|key_changes| ASK
+        RPT -->|key_changes| MATRIX
 
     subgraph L4["⚖️ Layer 3：協商建議依據檢索（已接入，2026-07-02；原始資料 UI 揭露 2026-07-03）"]
         direction LR
@@ -96,6 +104,10 @@ SK2 -->|注入知識| MB
 SK2 -->|注入知識| LLM
 SK2 -->|注入知識| PLAYBOOK
 API -->|按需觸發| PLAYBOOK
+API -->|按需觸發| ASK
+API -->|按需觸發| MATRIX
+ASK -.->|呼叫 LLM Service 內建函式| LLM
+MATRIX -.->|呼叫 LLM Service 內建函式| LLM
 LLM --> GEMINI
 LLM --> CLAUDE
 MA --> GEMINI
@@ -118,11 +130,12 @@ class P1 done;
 class MAS done;
 class SKILLS skill;
 class L4 done;
+class ASKMATRIX done;
 class EXT ext;
 class PRINCIPLE principle;
 class PARSER,ALIGN,DIFF,RISK,LLM,RPT pipeline;
 class VA verify;
-class PLAYBOOK pipeline;
+class PLAYBOOK,ASK,MATRIX pipeline;
 class LAWCACHE,PRECEDENT verify;
 class SK1,SK2,SK3 skill;
 class MA agent_a;

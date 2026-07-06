@@ -479,6 +479,10 @@ def _build_report_context(key_changes: List[dict]) -> str:
         ]
         if c.get("legal_basis"):
             block.append(f"法律依據：{c['legal_basis']}")
+        if c.get("legal_citation_raw"):
+            block.append(f"法條原文：{c['legal_citation_raw']}")
+        if c.get("precedent_raw"):
+            block.append(f"相似先例（含相似度）：{c['precedent_raw']}")
         if c.get("mas_status") == "pending":
             block.append(
                 f"雙重驗證意見分歧：嚴格審查認為「{c.get('mas_agent_a_view', '')}」；"

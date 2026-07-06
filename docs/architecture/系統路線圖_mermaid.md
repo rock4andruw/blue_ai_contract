@@ -2,11 +2,11 @@
 
 flowchart LR
 
-NOW["✅ 現況（已完成）\n規則引擎 + Verification Agent\n+ Layer 3 + MAS 雙重驗證"]
+NOW["✅ 現況（已完成）\n規則引擎 + Verification Agent + Layer 3\nMAS 雙重驗證 + 對話式問答／協商矩陣\nNDA／採購合約類型 + 法條查詢"]
 
-SHORT["🔵 短期（3 個月內）\n• NDA／採購合約類型\n• 合約範本 Playbook\n• Layer 3 法條/先例擴充\n• Teams／SharePoint 整合"]
+SHORT["🔵 短期（3 個月內）\n• 整合 LiteLLM（統一多模型呼叫介面）\n  → 資訊合規要求：可控管/替換底層模型供應商\n• 合約範本 Playbook 擴充\n• Layer 3 法條/先例語料擴充\n• Teams／SharePoint 整合"]
 
-MID["🟣 中期（6 個月內）\n• 罰款合理性 Insight 分析\n• 歷史修改趨勢追蹤\n• 掃描版 PDF（OCR）"]
+MID["🟣 中期（6 個月內）\n• 異質模型 MAS（Agent A/B 換不同供應商模型）\n• 罰款合理性 Insight 分析\n• 歷史修改趨勢追蹤\n• 掃描版 PDF（OCR）"]
 
 LONG["⚫ 長期（12 個月）\n• 週報自動整併月報\n• RBAC 三層權限\n• 跨部門推廣（採購／業務／人資）"]
 
