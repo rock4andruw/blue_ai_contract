@@ -41,6 +41,14 @@ def compare(
     diff_engine = DiffEngine()
     diffs = diff_engine.compute_diffs(original_doc.clauses, revised_doc.clauses, alignment)
 
+    # Step 3b: Coverage Guard (text conservation check)
+    coverage = diff_engine.check_coverage(
+        raw_original=original_doc.raw_text,
+        raw_revised=revised_doc.raw_text,
+        old_clauses=original_doc.clauses,
+        new_clauses=revised_doc.clauses,
+    )
+
     # Step 4: Risk (Rule Engine — Layer 1)
     risk_engine = RiskEngine()
     flags = risk_engine.analyze(diffs)
@@ -61,6 +69,7 @@ def compare(
         diffs=diffs,
         flags=flags,
         sections=sections,
+        coverage_guard=coverage,
     )
     md = to_markdown(report)
 

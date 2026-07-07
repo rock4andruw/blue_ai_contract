@@ -61,6 +61,15 @@ class ReviewAdvice(BaseModel):
     acceptable_count: int
 
 
+class CoverageGuardResponse(BaseModel):
+    """Text conservation check results."""
+    parser_coverage_ok: bool
+    diff_coverage_ok: bool
+    original_parser_ratio: float
+    revised_parser_ratio: float
+    missing_fragments: List[str] = []
+
+
 class NegotiateRequest(BaseModel):
     clause_id: str
     risk_code: str
@@ -103,6 +112,9 @@ class CompareResponse(BaseModel):
     key_changes: List[KeyChange]
     all_risk_flags: List[RiskFlagItem]
     review_advice: ReviewAdvice
+
+    # 文字守恆檢查（Coverage Guard）
+    coverage_guard: Optional[CoverageGuardResponse] = None
 
     # 完整 Markdown 報告
     markdown_report: str

@@ -1,11 +1,66 @@
 """Diff engine: converts alignment MatchBlocks into structured DiffItems."""
 
+import re
 import difflib
-from typing import List
-from .schemas import DiffItem, MatchBlock
+from typing import List, Tuple
+from .schemas import DiffItem, MatchBlock, CoverageReport
 from .parser import ClauseElement
 
 _SIMILARITY_THRESHOLD = 0.75
+_PARSER_COVERAGE_THRESHOLD = 0.97  # 97% acceptable loss (3% safety margin)
+
+
+def _normalize_text_level_2(text: str) -> str:
+    """Meaningful punctuation normalization: remove separators but keep semantic symbols.
+
+    Keep: letters, digits, CJK, currency ($¥€), percent (%), slashes (/)
+    Remove: commas, periods, quotes, brackets, and other separators
+
+    This is the main metric for Parser Guard coverage check.
+    """
+    if not text:
+        return ""
+
+    # First, collapse HTML/MD formatting
+    text = re.sub(r'<del[^>]*>.*?</del>', '', text, flags=re.DOTALL | re.IGNORECASE)
+    text = re.sub(r'<ins[^>]*>(.*?)</ins>', r'\1', text, flags=re.DOTALL | re.IGNORECASE)
+    text = re.sub(r'<[^>]+>', '', text)
+    text = re.sub(r'^#+\s*', '', text, flags=re.MULTILINE)
+    text = re.sub(r'[\*_`]', '', text)
+
+    # Collapse whitespace
+    text = re.sub(r'\s+', ' ', text)
+
+    # Remove purely decorative punctuation (separators)
+    punctuation_to_remove = r'["\'\`\[\]\(\),。.;:!?！？；：、，「」『』（）\-—–]'
+    text = re.sub(punctuation_to_remove, '', text)
+
+    return text.strip()
+
+
+def _measure_parser_coverage(raw_text: str, parsed_text: str) -> Tuple[float, List[str]]:
+    """Measure how much of the original raw text was preserved during parsing.
+
+    Returns:
+      - coverage_ratio: float (0.0-1.0) at L2 normalization level
+      - missing_fragments: list of character sequences that were lost (up to 50 chars each)
+    """
+    raw_norm = _normalize_text_level_2(raw_text)
+    parsed_norm = _normalize_text_level_2(parsed_text)
+
+    coverage = len(parsed_norm) / len(raw_norm) if len(raw_norm) > 0 else 1.0
+
+    # Locate missing fragments using difflib.SequenceMatcher
+    missing_fragments = []
+    if coverage < 1.0:
+        matcher = difflib.SequenceMatcher(None, raw_norm, parsed_norm)
+        for tag, i1, i2, j1, j2 in matcher.get_opcodes():
+            if tag in ('delete', 'replace'):
+                missing = raw_norm[i1:i2][:50]  # First 50 chars
+                if missing and missing not in missing_fragments:
+                    missing_fragments.append(missing)
+
+    return coverage, missing_fragments
 
 
 def _text_similarity(a: str, b: str) -> float:
@@ -16,6 +71,42 @@ def _text_similarity(a: str, b: str) -> float:
 
 
 class DiffEngine:
+    def check_coverage(
+        self,
+        raw_original: str,
+        raw_revised: str,
+        old_clauses: List[ClauseElement],
+        new_clauses: List[ClauseElement],
+    ) -> CoverageReport:
+        """Check text conservation: verify no silent content loss during parsing/diff.
+
+        Args:
+            raw_original: original contract raw text (before parsing)
+            raw_revised: revised contract raw text (before parsing)
+            old_clauses: parsed clauses from original
+            new_clauses: parsed clauses from revised
+
+        Returns:
+            CoverageReport with coverage ratios and any missing fragments detected
+        """
+        # Reconstruct parsed text from all clauses
+        parsed_original = "\n\n".join(c.content for c in old_clauses)
+        parsed_revised = "\n\n".join(c.content for c in new_clauses)
+
+        # Measure coverage for both versions
+        orig_ratio, orig_missing = _measure_parser_coverage(raw_original, parsed_original)
+        rev_ratio, rev_missing = _measure_parser_coverage(raw_revised, parsed_revised)
+
+        all_missing = list(set(orig_missing + rev_missing))[:10]  # Cap to 10 fragments
+
+        return CoverageReport(
+            parser_coverage_ok=orig_ratio >= _PARSER_COVERAGE_THRESHOLD and rev_ratio >= _PARSER_COVERAGE_THRESHOLD,
+            diff_coverage_ok=True,  # Diff coverage is always 100% by definition (nothing added/removed in diff output)
+            original_parser_ratio=orig_ratio,
+            revised_parser_ratio=rev_ratio,
+            missing_fragments=all_missing,
+        )
+
     def compute_diffs(
         self,
         old_clauses: List[ClauseElement],

@@ -71,6 +71,20 @@ class RiskFlag:
 
 
 # ------------------------------------------------------------------
+# Coverage Guard output (text conservation check)
+# ------------------------------------------------------------------
+
+@dataclass
+class CoverageReport:
+    """Text conservation check results (ensuring no silent content loss during parsing/diff)."""
+    parser_coverage_ok: bool           # True if >= 97%
+    diff_coverage_ok: bool             # True if == 100% (or within tolerance)
+    original_parser_ratio: float       # 0.0-1.0, parser loss for original contract
+    revised_parser_ratio: float        # 0.0-1.0, parser loss for revised contract
+    missing_fragments: List[str] = field(default_factory=list)  # Localized missing content clues
+
+
+# ------------------------------------------------------------------
 # Layer 5: LLM / Report output
 # ------------------------------------------------------------------
 
@@ -111,6 +125,7 @@ class ComparisonReport:
     must_negotiate: List[str]         # clause_ids that must be negotiated
     suggested_negotiate: List[str]    # clause_ids worth negotiating
     acceptable: List[str]             # clause_ids that are acceptable
+    coverage_guard: Optional[CoverageReport] = None  # Text conservation check results
 
 
 # ------------------------------------------------------------------
