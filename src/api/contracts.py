@@ -13,7 +13,7 @@ from fastapi.concurrency import run_in_threadpool
 from fastapi.responses import JSONResponse
 
 from .schemas_api import (
-    CompareResponse, KeyChange, RiskFlagItem, ReviewAdvice, NegotiateRequest, NegotiateResponse, PlaybookTier,
+    CompareResponse, KeyChange, RiskFlagItem, ReviewAdvice, NegotiateRequest, NegotiateResponse, PlaybookTier, CoverageGuardResponse,
     AskRequest, AskResponse, NegotiationMatrixRequest, NegotiationMatrixResponse, NegotiationMatrixRow,
 )
 from ..services.contract.orchestrator import compare as run_pipeline
@@ -131,6 +131,17 @@ def _build_response(
         for f in report.all_risk_flags
     ]
 
+    # Map coverage_guard if present
+    coverage_guard_response = None
+    if report.coverage_guard:
+        coverage_guard_response = CoverageGuardResponse(
+            parser_coverage_ok=report.coverage_guard.parser_coverage_ok,
+            diff_coverage_ok=report.coverage_guard.diff_coverage_ok,
+            original_parser_ratio=report.coverage_guard.original_parser_ratio,
+            revised_parser_ratio=report.coverage_guard.revised_parser_ratio,
+            missing_fragments=report.coverage_guard.missing_fragments,
+        )
+
     return CompareResponse(
         original_filename=original_filename,
         revised_filename=revised_filename,
@@ -149,6 +160,7 @@ def _build_response(
             suggested_negotiate=report.suggested_negotiate,
             acceptable_count=len(report.acceptable),
         ),
+        coverage_guard=coverage_guard_response,
         markdown_report=md,
     )
 

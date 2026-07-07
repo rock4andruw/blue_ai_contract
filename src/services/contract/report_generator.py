@@ -4,7 +4,7 @@ import re
 from datetime import date
 from typing import List
 from .schemas import (
-    ComparisonReport, DiffItem, ReportSection, RiskFlag, RiskLevel, RISK_CODES
+    ComparisonReport, DiffItem, ReportSection, RiskFlag, RiskLevel, RISK_CODES, CoverageReport
 )
 
 
@@ -35,6 +35,7 @@ def build_report(
     diffs: List[DiffItem],
     flags: List[RiskFlag],
     sections: List[ReportSection],
+    coverage_guard: CoverageReport = None,
 ) -> ComparisonReport:
     adverse = [f for f in flags if f.risk_direction == "adverse"]
     high = [f for f in adverse if f.risk_level == "high"]
@@ -61,6 +62,7 @@ def build_report(
         must_negotiate=must_negotiate,
         suggested_negotiate=suggested,
         acceptable=acceptable,
+        coverage_guard=coverage_guard,
     )
 
 
@@ -79,6 +81,20 @@ def to_markdown(report: ComparisonReport) -> str:
         f"低風險 {report.low_risk_count}）\n"
     )
     lines.append("---\n")
+
+    # Coverage Guard alert (if applicable)
+    if report.coverage_guard and not report.coverage_guard.parser_coverage_ok:
+        loss_pct = 100 * (1 - min(report.coverage_guard.original_parser_ratio, report.coverage_guard.revised_parser_ratio))
+        lines.append("> [!WARNING]")
+        lines.append(f"> **文字守恆檢查警示**")
+        lines.append(f"> 系統偵測到原始合約有部分文字在解析過程中未被完整納入比對（遺漏比例：{loss_pct:.1f}%）。")
+        if report.coverage_guard.missing_fragments:
+            lines.append(f"> **疑似遺漏片段線索**：")
+            for fragment in report.coverage_guard.missing_fragments[:3]:
+                lines.append(f"> - 「...{fragment}...」")
+        lines.append(f">")
+        lines.append(f"> *請人工複核上述內容是否包含關鍵商業條款。*\n")
+        lines.append("---\n")
 
     lines.append("## 整體評估\n")
     lines.append(report.overall_assessment)
