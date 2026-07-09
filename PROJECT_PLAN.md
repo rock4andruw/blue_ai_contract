@@ -101,6 +101,8 @@ CLM 標準流程分為七個階段，Blue-AI 聚焦在最耗人工、最需要�
 | **Alignment 誤判修正**            | 相似度後處理（difflib ≥ 75%）偵測重新編號條款，避免誤標為「乙方新增」                                                                                                                                           |
 | **Demo UI**                       | 靜態單頁，上傳 / 範例模式（v2-v5），Hero 指標條可點擊展開說明                                                                                                                                                    |
 | **FastAPI**                       | `POST /api/v1/contracts/compare`、`POST /api/v1/contracts/negotiate`，JSON 回傳                                                                                                                              |
+| **報告內問答**                    | 針對已產出報告提問，只根據報告內容回答，查無資訊誠實告知不編造；UI 用「有依據／查無資料」兩種視覺樣式呈現                                                                                                          |
+| **協商矩陣**                      | 批次生成「對方訴求／我方政策／建議折衷方案／底線／法律依據」對照表，可列印帶入協商會議                                                                                                                            |
 
 ### 與 Lumine AI 的功能定位
 
@@ -376,6 +378,32 @@ LIMIT 3;
 ```
 
 > 此設計已列入「六、未來展望」的資料庫升級方向；現行實作（`precedent_corpus.py` + `legal_citations_cache.json`）見 `src/services/contract/`。
+
+### 「機敏資料（PII）怎麼處理？」
+
+一樣分三層回答，先誠實講現況缺口，再秀正式設計，最後說明為什麼現在不做。
+
+**第一層：現況（先講這個）**
+
+> 「現在是 PoC 階段，送進 LLM API 的是**比對後的差異條款片段**，不是合約全文，也不是當事人的身份文件——但我們誠實承認，目前**還沒有**在送出前自動遮蔽統一編號、金額、當事人名稱這類欄位，這是已知的架構缺口，不是做完的事。現有的保護是另一層：真實客戶合約樣本完全不進版控、不被讀取或外送（deny + hook 雙重保護），API Key 走環境變數不進 code/git/log。但『條款文字本身送到外部 LLM』這件事目前沒有額外遮蔽層。」
+
+**第二層：若追問「那正式上線呢？」**
+
+> 「上線會在 LLM 呼叫前後加一層 **PII 自動遮蔽**，用開源的 **Microsoft Presidio**（spaCy NER + regex recognizer），送出前偵測並遮蔽當事人名稱、統一編號、金額等欄位，回傳後可選擇性再做一次 output scan 二次確認沒有殘留。若要更完整的企業治理版本，可以在外層加 **LiteLLM Gateway** 統一收斂多供應商呼叫與流量控管，並接 **Microsoft Purview DLP** 做企業稽核留痕。這是未來展望，目前**沒有實作**，屬於說明性設計，不是已完成功能。」
+
+**設計示意**（供內部參考，未實作）：
+
+```text
+CLM 應用 → LiteLLM Gateway（內網 DMZ）→ Presidio（送出前遮蔽）
+         → Gemini/Claude API → Presidio（回傳後二次掃描）
+         → Purview DLP（稽核記錄）→ CLM 應用
+```
+
+**第三層：若追問「為什麼不現在就做？」**
+
+> 「Presidio 本身技術上可行、工作量不大，現在沒做純粹是優先序判斷——賽前時間優先給簡報準備跟 coverage guard。但 LiteLLM Gateway 跟 Purview DLP 不是工程團隊自己能決定要不要做的事：Purview 需要真的接 M365/Azure tenant 的治理授權與 IT 管理設定，這是企業導入評估階段才有意義去談的事，現在做是在做表演，不是在做工程。」
+
+此設計為說明性規劃，未實作；現行資料保護機制（deny + hook、環境變數金鑰）見 `.claude/settings.json` 與 `docs/harness/A_diagnosis.md`。
 
 ---
 

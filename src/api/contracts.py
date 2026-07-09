@@ -70,6 +70,14 @@ def _build_response(
     diff_engine = DiffEngine()
     diffs = diff_engine.compute_diffs(original_doc.clauses, revised_doc.clauses, alignment)
 
+    # Coverage Guard: text conservation check
+    coverage_guard = diff_engine.check_coverage(
+        raw_original=original_doc.raw_text,
+        raw_revised=revised_doc.raw_text,
+        old_clauses=original_doc.clauses,
+        new_clauses=revised_doc.clauses,
+    )
+
     risk_engine = RiskEngine()
     flags = risk_engine.analyze(diffs)
 
@@ -88,6 +96,7 @@ def _build_response(
         diffs=diffs,
         flags=flags,
         sections=sections,
+        coverage_guard=coverage_guard,
     )
     md = to_markdown(report)
 

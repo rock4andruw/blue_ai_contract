@@ -544,6 +544,128 @@
       margin-bottom: 4px;
     }
 
+    /* ── Report Q&A（批註形式，不是聊天泡泡） ── */
+    .ask-row {
+      display: flex;
+      gap: 8px;
+      margin-bottom: 4px;
+    }
+    .ask-input {
+      flex: 1;
+      padding: 9px 12px;
+      border: 1px solid var(--border-mid);
+      border-radius: var(--radius);
+      background: var(--surface);
+      font-size: 13px;
+      color: var(--ink);
+      font-family: inherit;
+    }
+    .ask-input:focus { outline: none; border-color: var(--gold); }
+    .ask-input::placeholder { color: var(--ink-light); opacity: .6; }
+    .ask-submit {
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 11px;
+      font-weight: 600;
+      letter-spacing: .3px;
+      text-transform: uppercase;
+      padding: 0 16px;
+      border: 1px solid var(--border-mid);
+      border-radius: var(--radius);
+      background: var(--ink);
+      color: #fff;
+      cursor: pointer;
+      transition: background .15s;
+    }
+    .ask-submit:hover:not(:disabled) { background: #2E3A52; }
+    .ask-submit:disabled { opacity: .5; cursor: not-allowed; }
+    .ask-hint { font-size: 11px; color: var(--ink-light); opacity: .7; margin-top: 4px; }
+
+    .qa-log { margin-top: 14px; }
+    .qa-pair { margin-bottom: 12px; }
+    .qa-question {
+      font-size: 12.5px;
+      color: var(--ink-light);
+      margin-bottom: 5px;
+    }
+    .qa-question::before {
+      content: "提問";
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 9.5px;
+      font-weight: 700;
+      letter-spacing: .4px;
+      text-transform: uppercase;
+      opacity: .55;
+      margin-right: 7px;
+    }
+    .qa-answer {
+      padding: 10px 14px;
+      border-radius: 3px;
+      font-size: 13px;
+      line-height: 1.65;
+      position: relative;
+    }
+    .qa-answer .qa-tag {
+      display: inline-block;
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 9.5px;
+      font-weight: 700;
+      letter-spacing: .4px;
+      text-transform: uppercase;
+      margin-bottom: 5px;
+    }
+    .qa-answer.grounded {
+      background: var(--gold-light);
+      border-left: 3px solid var(--gold);
+    }
+    .qa-answer.grounded .qa-tag { color: var(--gold); }
+    .qa-answer.ungrounded {
+      background: var(--parchment);
+      border-left: 3px dashed var(--border-mid);
+      color: var(--ink-light);
+    }
+    .qa-answer.ungrounded .qa-tag { color: var(--ink-light); }
+
+    /* ── Negotiation matrix（附表，可列印） ── */
+    .matrix-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 12.5px;
+      margin-top: 12px;
+    }
+    .matrix-table th {
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 10px;
+      font-weight: 700;
+      letter-spacing: .3px;
+      text-transform: uppercase;
+      color: var(--ink-light);
+      text-align: left;
+      padding: 8px 10px;
+      border-bottom: 1px solid var(--border-mid);
+      white-space: nowrap;
+    }
+    .matrix-table td {
+      font-family: 'EB Garamond', Georgia, serif;
+      font-size: 13.5px;
+      line-height: 1.55;
+      padding: 10px;
+      border-bottom: 1px solid var(--border);
+      vertical-align: top;
+    }
+    .matrix-table tr.risk-high td:first-child { border-left: 3px solid var(--red); }
+    .matrix-table tr.risk-medium td:first-child { border-left: 3px solid var(--gold); }
+    .matrix-table tr.risk-low td:first-child { border-left: 3px solid var(--green); }
+    .matrix-table td:first-child { font-family: 'IBM Plex Mono', monospace; font-size: 12px; white-space: nowrap; }
+    .matrix-legal { font-size: 11.5px; color: var(--ink-light); }
+    .matrix-empty { font-size: 12px; color: var(--ink-light); font-style: italic; padding: 8px 0; }
+
+    @media print {
+      body * { visibility: hidden; }
+      #matrix-print-area, #matrix-print-area * { visibility: visible; }
+      #matrix-print-area { position: absolute; top: 0; left: 0; width: 100%; }
+      .matrix-btn { display: none; }
+    }
+
     /* ── MAS badges ── */
     .mas-badge {
       display: inline-flex;
@@ -879,7 +1001,7 @@
 <div class="hero-strip">
   <div class="hero-metrics-row">
     <button class="hero-metric" onclick="toggleHero(0)" id="hero-btn-0" aria-expanded="false">
-      <span class="hero-num">26<span class="hero-unit">秒</span></span>
+      <span class="hero-num">60<span class="hero-unit">秒</span></span>
       <div class="hero-desc">
         <div class="hero-label">完成合約初審 <span class="hero-chevron">▼</span></div>
         <span class="hero-sub">人工平均需要 92 分鐘</span>
@@ -903,10 +1025,10 @@
     </button>
   </div>
   <div class="hero-detail" id="hero-detail-0">
-    根據 LawGeex Study，人工審閱一份 NDA 平均需要 <strong style="color:#E8C96A;">92 分鐘</strong>。本系統完成差異比對、風險標記、摘要生成僅需 <strong style="color:#E8C96A;">26 秒</strong>，初審結果 30 分鐘內可完成人工確認。
+    根據 LawGeex Study，人工審閱一份 NDA 平均需要 <strong style="color:#E8C96A;">92 分鐘</strong>。本系統完成差異比對、風險標記、LLM 摘要、多視角驗證僅需 <strong style="color:#E8C96A;">1 分鐘</strong>，加上法務確認 30 分鐘，總計 31 分鐘。
   </div>
   <div class="hero-detail" id="hero-detail-1">
-    以 38 筆人工標註的 gold set 驗證，高風險條款一筆未漏（<strong style="color:#E8C96A;">Recall = 100%</strong>）。整體偵測率 61%，採保守設計——寧可多標，確保高風險不會被 AI 遺漏。
+    基於 gold set 驗證（18 筆條款，v2+v4）：<strong style="color:#E8C96A;">高風險 Recall = 100%</strong>（5/5 發現）、<strong style="color:#E8C96A;">整體偵測率 67%</strong>（12/18 偵測）。採保守設計——優先不漏判，確保高風險不會被遺漏。
   </div>
   <div class="hero-detail" id="hero-detail-2">
     <strong style="color:#E8C96A;">規則引擎</strong>負責判定風險等級（確定性邏輯，不受 AI 幻覺影響），<strong style="color:#E8C96A;">LLM</strong> 只負責把風險翻成白話並給出協商對策。兩者各司其職——高風險由規則把關，AI 負責解釋，不靠 AI 猜測是否有風險。
@@ -1026,6 +1148,9 @@
     <!-- Meta -->
     <div class="meta" id="result-meta"></div>
 
+    <!-- Coverage Guard alert (if needed) -->
+    <div id="coverage-guard-alert"></div>
+
     <!-- Verdict -->
     <div class="verdict" id="result-verdict"></div>
 
@@ -1064,6 +1189,25 @@
           <tbody id="result-flags"></tbody>
         </table>
       </div>
+    </div>
+
+    <!-- Report Q&A -->
+    <div class="card">
+      <div class="card-title"><span aria-hidden="true">💬</span> 報告問答</div>
+      <div class="ask-row">
+        <input type="text" class="ask-input" id="ask-input" placeholder="針對這份報告提問，例如：為什麼這條被標高風險？"
+               onkeydown="if(event.key==='Enter') askQuestion();">
+        <button class="ask-submit" id="ask-submit" onclick="askQuestion()">提問</button>
+      </div>
+      <div class="ask-hint">只根據這份報告的內容回答；報告沒提到的資訊會誠實告知查無資料，不會編造。</div>
+      <div class="qa-log" id="qa-log"></div>
+    </div>
+
+    <!-- Negotiation matrix -->
+    <div class="card">
+      <div class="card-title"><span aria-hidden="true">📊</span> 協商矩陣</div>
+      <button class="negotiate-btn matrix-btn" id="matrix-btn" onclick="exportMatrix()">📋 匯出協商矩陣（高風險條款）</button>
+      <div id="matrix-area"></div>
     </div>
 
     <!-- Download -->
@@ -1203,6 +1347,41 @@
     stopLoadingAnimation();
     document.getElementById('loading').style.display = 'none';
     document.getElementById('results').style.display = 'block';
+
+    // reset per-report state from any previous comparison
+    document.getElementById('qa-log').innerHTML = '';
+    document.getElementById('ask-input').value = '';
+    document.getElementById('matrix-area').innerHTML = '';
+    const matrixBtn = document.getElementById('matrix-btn');
+    matrixBtn.disabled = false;
+    matrixBtn.textContent = '📋 匯出協商矩陣（高風險條款）';
+
+    // Coverage Guard check
+    let coverageHtml = '';
+    if (d.coverage_guard) {
+      const cg = d.coverage_guard;
+      const origRatio = (cg.original_parser_ratio * 100).toFixed(1);
+      const revRatio = (cg.revised_parser_ratio * 100).toFixed(1);
+      const threshold = 97;
+      const ok = cg.parser_coverage_ok;
+      if (!ok) {
+        coverageHtml = `
+          <div style="background:var(--red-light);border-left:4px solid var(--red);padding:12px 16px;border-radius:var(--radius);margin-bottom:14px;font-size:13px;color:var(--red);">
+            <strong>⚠ 文字覆蓋率警告</strong><br>
+            原始文件覆蓋率 ${origRatio}% | 修訂文件覆蓋率 ${revRatio}% (閾值: ${threshold}%)
+            ${cg.missing_fragments.length ? `<br>無法解析片段: ${cg.missing_fragments.slice(0,3).join(' | ')}${cg.missing_fragments.length > 3 ? '...' : ''}` : ''}
+            <br><span style="font-size:12px;opacity:.8;">建議人工複核原始檔案確保未遺漏任何內容。</span>
+          </div>
+        `;
+      } else {
+        coverageHtml = `
+          <div style="background:var(--green-light);border-left:4px solid var(--green);padding:10px 14px;border-radius:var(--radius);margin-bottom:12px;font-size:12px;color:var(--green);">
+            ✓ 文字守恆檢查：原始 ${origRatio}% | 修訂 ${revRatio}% (閾值 ${threshold}%)
+          </div>
+        `;
+      }
+    }
+    document.getElementById('coverage-guard-alert').innerHTML = coverageHtml;
 
     // meta
     const modeLabel = d.summary_mode === 'claude_api'
@@ -1445,11 +1624,117 @@
     }
   }
 
+  // ── Report Q&A ────────────────────────────────────────────────────────────
+  async function askQuestion() {
+    const input = document.getElementById('ask-input');
+    const question = input.value.trim();
+    if (!question) return;
+
+    const submitBtn = document.getElementById('ask-submit');
+    const log = document.getElementById('qa-log');
+    submitBtn.disabled = true;
+    input.disabled = true;
+
+    const pairId = `qa-${Date.now()}`;
+    log.insertAdjacentHTML('beforeend', `
+      <div class="qa-pair" id="${pairId}">
+        <div class="qa-question">${escHtml(question)}</div>
+        <div class="qa-answer ungrounded"><span class="qa-tag">⋯ 查詢中</span></div>
+      </div>
+    `);
+    input.value = '';
+
+    try {
+      const res = await fetch(`${API}/api/v1/contracts/ask`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ key_changes: _changes, question }),
+      });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const data = await res.json();
+      const pair = document.getElementById(pairId);
+      const tag = data.grounded ? '✓ 有依據' : '— 查無相關資訊';
+      pair.querySelector('.qa-answer').className = `qa-answer ${data.grounded ? 'grounded' : 'ungrounded'}`;
+      pair.querySelector('.qa-answer').innerHTML = `<span class="qa-tag">${tag}</span><div>${escHtmlMd(data.answer)}</div>`;
+    } catch (e) {
+      const pair = document.getElementById(pairId);
+      pair.querySelector('.qa-answer').innerHTML = `<span class="qa-tag">⚠ 錯誤</span><div>查詢失敗：${escHtml(String(e))}</div>`;
+    } finally {
+      submitBtn.disabled = false;
+      input.disabled = false;
+      input.focus();
+    }
+  }
+
+  // ── Negotiation matrix ───────────────────────────────────────────────────
+  async function exportMatrix() {
+    const btn = document.getElementById('matrix-btn');
+    const area = document.getElementById('matrix-area');
+    const highRisk = _changes.filter(c => c.risk_level === 'high');
+
+    if (!highRisk.length) {
+      area.innerHTML = '<div class="matrix-empty">這份報告沒有高風險條款，無需生成協商矩陣。</div>';
+      return;
+    }
+
+    btn.disabled = true;
+    btn.textContent = '⏳ 生成中…（逐條款生成三層對策，需要一些時間）';
+
+    try {
+      const res = await fetch(`${API}/api/v1/contracts/negotiate/matrix`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ key_changes: highRisk }),
+      });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const data = await res.json();
+
+      const rows = data.rows.map(r => `
+        <tr class="risk-${r.risk_level}">
+          <td>${escHtml(r.clause_id)}</td>
+          <td>${escHtml(r.counterparty_ask)}</td>
+          <td>${escHtml(r.our_position)}</td>
+          <td>${escHtml(r.compromise)}</td>
+          <td>${escHtml(r.redline)}</td>
+          <td class="matrix-legal">${r.legal_basis ? escHtml(r.legal_basis) : '—'}</td>
+        </tr>
+      `).join('');
+
+      area.innerHTML = `
+        <div id="matrix-print-area">
+          <table class="matrix-table">
+            <thead>
+              <tr>
+                <th>條款</th><th>對方訴求</th><th>我方政策</th><th>建議折衷方案</th><th>底線</th><th>法律依據</th>
+              </tr>
+            </thead>
+            <tbody>${rows}</tbody>
+          </table>
+        </div>
+        <div style="text-align:right;margin-top:10px;">
+          <button class="btn-dl" onclick="window.print()">🖨 列印 / 存成 PDF</button>
+        </div>
+      `;
+      btn.textContent = '✓ 已生成';
+    } catch (e) {
+      btn.disabled = false;
+      btn.textContent = '⚠ 重試';
+      area.innerHTML = `<div style="color:var(--red);font-size:12px;padding:6px 0;">生成失敗：${escHtml(String(e))}</div>`;
+    }
+  }
+
   function escHtml(str) {
     if (!str) return '';
     return String(str)
       .replace(/&/g,'&amp;').replace(/</g,'&lt;')
       .replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+  }
+
+  // LLM answers sometimes use markdown-style **bold** even when asked for
+  // plain text. escHtml() runs first so this only ever reintroduces literal
+  // <strong> tags around already-escaped content — not an injection vector.
+  function escHtmlMd(str) {
+    return escHtml(str).replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
   }
 </script>
 </body>

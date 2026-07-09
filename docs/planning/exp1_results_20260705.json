@@ -1,0 +1,116 @@
+{
+  "total": 18,
+  "high_total": 3,
+  "pure_detected": 16,
+  "pure_high_detected": 3,
+  "results": [
+    {
+      "ver": "v4",
+      "clause_id": "4.3",
+      "gold": "medium",
+      "pure_llm": "high"
+    },
+    {
+      "ver": "v4",
+      "clause_id": "7.4",
+      "gold": "medium",
+      "pure_llm": "high"
+    },
+    {
+      "ver": "v4",
+      "clause_id": "8.3 / 8.4",
+      "gold": "medium",
+      "pure_llm": "NOT_ALIGNED"
+    },
+    {
+      "ver": "v4",
+      "clause_id": "10.2",
+      "gold": "medium",
+      "pure_llm": "NOT_ALIGNED"
+    },
+    {
+      "ver": "v4",
+      "clause_id": "11.1",
+      "gold": "high",
+      "pure_llm": "high"
+    },
+    {
+      "ver": "v4",
+      "clause_id": "11.2",
+      "gold": "high",
+      "pure_llm": "high"
+    },
+    {
+      "ver": "v4",
+      "clause_id": "11.3",
+      "gold": "high",
+      "pure_llm": "high"
+    },
+    {
+      "ver": "v4",
+      "clause_id": "12.3",
+      "gold": "medium",
+      "pure_llm": "high"
+    },
+    {
+      "ver": "v4",
+      "clause_id": "12.4",
+      "gold": "medium",
+      "pure_llm": "high"
+    },
+    {
+      "ver": "v4",
+      "clause_id": "13.3",
+      "gold": "medium",
+      "pure_llm": "high"
+    },
+    {
+      "ver": "v4",
+      "clause_id": "14.3",
+      "gold": "medium",
+      "pure_llm": "high"
+    },
+    {
+      "ver": "v2",
+      "clause_id": "4.1",
+      "gold": "medium",
+      "pure_llm": "high"
+    },
+    {
+      "ver": "v2",
+      "clause_id": "5.2",
+      "gold": "low",
+      "pure_llm": "high"
+    },
+    {
+      "ver": "v2",
+      "clause_id": "5.3",
+      "gold": "low",
+      "pure_llm": "high"
+    },
+    {
+      "ver": "v2",
+      "clause_id": "6.1",
+      "gold": "low",
+      "pure_llm": "medium"
+    },
+    {
+      "ver": "v2",
+      "clause_id": "9.1",
+      "gold": "low",
+      "pure_llm": "low"
+    },
+    {
+      "ver": "v2",
+      "clause_id": "10.2",
+      "gold": "medium",
+      "pure_llm": "high"
+    },
+    {
+      "ver": "v2",
+      "clause_id": "10.3",
+      "gold": "medium",
+      "pure_llm": "medium"
+    }
+  ]
+}

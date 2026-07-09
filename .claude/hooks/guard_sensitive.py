@@ -37,6 +37,13 @@ _EXFIL_VERBS = {
 }
 # 這些會弄壞 skills 結構
 _SKILL_MUTATORS = {"mv", "rm", "rename", "trash"}
+# 只有這 4 個檔案真的被 src/services/contract 的 4 處 runtime loader 讀取
+# （見 docs/harness/skills_runtime_assets.md）。frontend-design.md 不在保護
+# 範圍內——2026-07-05 查證過沒有任何 src/ 程式碼讀取它，可以自由搬移/改格式。
+_PROTECTED_SKILL_FILES = {
+    "contract-diff.md", "contract-risk-analysis.md",
+    "negotiation-strategy.md", "report-writing.md",
+}
 # 動詞抽取時要跳過的前綴/包裝
 _WRAPPERS = {"sudo", "env", "nohup", "time", "command", "builtin",
              "exec", "xargs", "then", "do", "else", "!"}
@@ -90,15 +97,18 @@ def main() -> int:
     verbs = _verbs(cmd)
 
     # 任務 B：保護 skills 結構（mv/rm/rename）——優先判，訊息較具體
+    # 只擋命令有提到「受保護的 4 個檔名」的情況；frontend-design.md（唯一
+    # 沒被 runtime 讀取的第 5 個檔案）不受此限，可自由搬移/改格式。
     if ("skills" in cmd) and (".claude" in cmd or "skills/" in cmd):
         if any(v in _SKILL_MUTATORS for v in verbs):
-            sys.stderr.write(
-                "🛑 guard_sensitive 阻擋：偵測到對 .claude/skills/ 的搬移/改名/刪除。\n"
-                "這 5 個檔是 src/services/contract 的 4 處 runtime loader 資產，搬移或改名會弄壞產品。\n"
-                "編輯檔案內容是允許的；但**絕不可**搬移、改名、刪除或轉成 <name>/SKILL.md 目錄格式。\n"
-                "詳見 docs/harness/skills_runtime_assets.md。此為刻意保護，請勿重試。\n"
-            )
-            return 2
+            if any(protected in cmd for protected in _PROTECTED_SKILL_FILES):
+                sys.stderr.write(
+                    "🛑 guard_sensitive 阻擋：偵測到對受保護 skill 檔的搬移/改名/刪除。\n"
+                    "這是 src/services/contract 的 4 處 runtime loader 資產，搬移或改名會弄壞產品。\n"
+                    "編輯檔案內容是允許的；但**絕不可**搬移、改名、刪除或轉成 <name>/SKILL.md 目錄格式。\n"
+                    "詳見 docs/harness/skills_runtime_assets.md。此為刻意保護，請勿重試。\n"
+                )
+                return 2
 
     # 任務 A：擋敏感檔外洩
     sens = _sensitive_hits(cmd)

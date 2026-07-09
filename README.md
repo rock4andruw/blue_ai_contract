@@ -6,8 +6,8 @@
 
 Blue-AI 合約智能比對助理，讓法務與 PM 在 30 分鐘內完成過去需要 2 小時的合約審查。不只找出差異，更給出重點摘要、風險等級與可直接用於協商的對策建議。
 
-**專案規劃**: 詳見 [PROJECT_PLAN.md](PROJECT_PLAN.md)  
-**架構設計**: 詳見 [docs/architecture/service_design.md](docs/architecture/service_design.md)、[docs/architecture/系統架構_mermaid.md](docs/architecture/系統架構_mermaid.md)（Mermaid 完整架構圖）  
+**專案規劃**: 詳見 [PROJECT_PLAN.md](PROJECT_PLAN.md)
+**架構設計**: 詳見 [docs/architecture/service_design.md](docs/architecture/service_design.md)、[docs/architecture/系統架構_mermaid.md](docs/architecture/系統架構_mermaid.md)（Mermaid 完整架構圖）
 **當前狀態**: 🟢 Phase 1.5 + Verification Agent（Layer 2）+ Layer 3（法律依據檢索）完成，2026-07-02
 
 ---
@@ -50,6 +50,12 @@ Blue-AI 合約智能比對助理，讓法務與 PM 在 30 分鐘內完成過去�
 - **真實法條**：離線用 `mcp-taiwan-legal-db`（MIT 授權、免 API key，接法務部全國法規資料庫）查回民法／民事訴訟法條文，快取於 `legal_citations_cache.json`，執行時純同步讀檔，無即時網路依賴
 - **相似先例**：用 `gemini-embedding-2` 對合成先例語料庫（`precedent_corpus.py`）做真實向量檢索（cosine similarity），不是關鍵字比對，也不需要 PostgreSQL
 - 協商建議只在真的檢索到依據時才顯示「⚖ 法律依據」，System Prompt 明確禁止 LLM 自行編造法條——查無依據時欄位留空，是誠實揭露而非顯示錯誤
+
+### 對話式功能：報告問答與協商矩陣
+
+- **報告內問答**（`POST /api/v1/contracts/ask`）：針對已產出報告提問，只根據報告內容回答，查無資訊誠實告知「這份報告沒有相關資訊」，不編造。UI 上「有依據」與「查無資料」用不同視覺樣式呈現，一眼可辨。
+- **協商矩陣**（`POST /api/v1/contracts/negotiate/matrix`）：對多個高風險條款批次生成「對方訴求／我方政策／建議折衷方案／底線／法律依據」對照表，可直接列印帶入協商會議。
+- 兩者都是既有能力（風險摘要、三層協商對策、Layer 3 法律依據）的組裝層，沒有新增判斷邏輯，也不需要新資料源。
 
 ### 結構化報告
 
@@ -218,25 +224,25 @@ bule-ai-team/
 
 ### 技術選型
 
-| 元件 | 選擇 |
-| --- | --- |
-| LLM | Gemini 3.1 Flash Lite（主）/ Claude Sonnet 4.6 · Haiku 4.5（備）/ template fallback |
-| 文件解析 | pdfplumber + python-docx（含表格交錯讀取）+ 原生 MD parser |
-| 差異演算法 | difflib SequenceMatcher + Needleman-Wunsch DP |
-| 風險分類 | Rule-based（Layer 1，15 條規則，純 Python）+ LLM 語意補漏（Layer 2） |
+| 元件         | 選擇                                                                                  |
+| ------------ | ------------------------------------------------------------------------------------- |
+| LLM          | Gemini 3.1 Flash Lite（主）/ Claude Sonnet 4.6 · Haiku 4.5（備）/ template fallback  |
+| 文件解析     | pdfplumber + python-docx（含表格交錯讀取）+ 原生 MD parser                            |
+| 差異演算法   | difflib SequenceMatcher + Needleman-Wunsch DP                                         |
+| 風險分類     | Rule-based（Layer 1，15 條規則，純 Python）+ LLM 語意補漏（Layer 2）                  |
 | 協商依據檢索 | `mcp-taiwan-legal-db` 離線法條快取 + `gemini-embedding-2` 本地向量檢索（Layer 3） |
-| MAS | ThreadPoolExecutor + Judge 矩陣（gap-based） |
-| 後端 | FastAPI（`src/api/`，`run_in_threadpool` 確保並行請求不互相阻塞） |
+| MAS          | ThreadPoolExecutor + Judge 矩陣（gap-based）                                          |
+| 後端         | FastAPI（`src/api/`，`run_in_threadpool` 確保並行請求不互相阻塞）                 |
 
 ---
 
 ## 驗證數字
 
-| 指標 | 結果 | 目標 |
-| --- | --- | --- |
-| High-risk recall | **100%** | 100%（預定義類別內） |
-| Overall detection | 61% | >80% |
-| 測試樣本 | 38 筆（v1 vs v2-v5 gold set） | — |
+| 指標              | 結果                          | 目標                 |
+| ----------------- | ----------------------------- | -------------------- |
+| High-risk recall  | **100%**                | 100%（預定義類別內） |
+| Overall detection | 61%                           | >80%                 |
+| 測試樣本          | 38 筆（v1 vs v2-v5 gold set） | —                   |
 
 > Overall 61% 為設計選擇：rule engine 寧可高判不漏判，高風險一筆不漏是最重要的保證。
 
@@ -246,15 +252,16 @@ bule-ai-team/
 
 ## 下一步
 
-- [x] FastAPI endpoint（`POST /api/v1/contracts/compare`，`run_in_threadpool` 化）
-- [x] Demo UI（靜態 HTML，上傳 / 範例模式 v2-v6）
-- [x] 三層協商對策（`POST /api/v1/contracts/negotiate`）
-- [x] MAS Phase 1.5（Agent A/B 雙重驗證 + Judge 矩陣）
-- [x] NDA 測試合約（v1 甲方版 + v2 乙方修改版）
-- [x] Verification Agent（Layer 2，語意補漏 + 交叉核對）
-- [x] Layer 3 法律依據檢索（真實法條快取 + 先例向量檢索）
-- [x] 真實公司合約驗證（NDA / 軟體採購 / 軟體維護）
-- [x] 邊界測試（空條款 / 超長條款 / 表格條款）+ 壓測（並行請求）
+- [X] FastAPI endpoint（`POST /api/v1/contracts/compare`，`run_in_threadpool` 化）
+- [X] Demo UI（靜態 HTML，上傳 / 範例模式 v2-v6）
+- [X] 三層協商對策（`POST /api/v1/contracts/negotiate`）
+- [X] MAS Phase 1.5（Agent A/B 雙重驗證 + Judge 矩陣）
+- [X] NDA 測試合約（v1 甲方版 + v2 乙方修改版）
+- [X] Verification Agent（Layer 2，語意補漏 + 交叉核對）
+- [X] Layer 3 法律依據檢索（真實法條快取 + 先例向量檢索）
+- [X] 真實公司合約驗證（NDA / 軟體採購 / 軟體維護）
+- [X] 邊界測試（空條款 / 超長條款 / 表格條款）+ 壓測（並行請求）
+- [X] 報告內問答 + 協商矩陣（`POST /ask`、`POST /negotiate/matrix`，含 Demo UI）
 - [ ] 週次 3：簡報製作、Demo 流程預演
 - [ ] 異質模型 MAS（Phase 2：Gemini Agent A + Claude Agent B）
 - [ ] 真實 PostgreSQL + pgvector（Phase 2，目前用本地 JSON + cosine similarity）

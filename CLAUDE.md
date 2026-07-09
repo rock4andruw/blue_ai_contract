@@ -39,7 +39,8 @@ AI 驅動的**合約文件比對助理**：比對合約版本差異、標註風�
 | 需求 | 去哪 |
 |------|------|
 | 冷啟動專案脈絡（權威） | [PROJECT_CONTEXT.md](PROJECT_CONTEXT.md) |
-| 現行計畫與里程碑 | [PROJECT_PLAN.md](PROJECT_PLAN.md) |
+| 簡報內容／里程碑／Q&A 話術（給評審看的） | [PROJECT_PLAN.md](PROJECT_PLAN.md) |
+| **待辦清單（還沒做完的事，滾動更新，開發前先看）** | [next_step_plan.md](next_step_plan.md) |
 | 對外專案簡介 | [README.md](README.md) |
 | 競賽原始題目（參考） | 專案.md |
 | 歷史 session log／舊計畫 | `archive/`（過時，僅考古用） |

@@ -72,7 +72,10 @@
       "Read(sla_contract/**)",
       "Edit(sla_contract/**)",
       "Write(sla_contract/**)",
-      "Write(.claude/skills/*/**)"
+      "Write(.claude/skills/contract-diff/**)",
+      "Write(.claude/skills/contract-risk-analysis/**)",
+      "Write(.claude/skills/negotiation-strategy/**)",
+      "Write(.claude/skills/report-writing/**)"
     ]
   },
   "hooks": {

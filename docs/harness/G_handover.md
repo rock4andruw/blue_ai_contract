@@ -12,7 +12,8 @@
 
 ### 事 2：`.env` / 合約 / skills 三個地雷，踩一個就出事
 - **`.env` + 三合約目錄**：deny + hook 雙重保護。被擋是**刻意的**，看到 hook 的 exit 2 訊息**不要重試**。
-- **`.claude/skills/*.md`**：不是可用 skill，是 `src/` 4 處 runtime loader 的資產，改格式/搬移＝弄壞產品。必讀 [skills_runtime_assets.md](skills_runtime_assets.md)。
+- **`.claude/skills/` 下 4 個平面檔**（`contract-diff.md`、`contract-risk-analysis.md`、`negotiation-strategy.md`、`report-writing.md`）：不是可用 skill，是 `src/` 4 處 runtime loader 的資產，改格式/搬移＝弄壞產品。必讀 [skills_runtime_assets.md](skills_runtime_assets.md)。
+  - **2026-07-05 更新**：原本第 5 個檔案 `frontend-design.md` 已查證確認沒有任何 loader 引用，經 User 同意後已轉正成 `frontend-design/SKILL.md`（真正可呼叫的 Claude Code skill）。保護規則（settings.json deny + guard_sensitive hook）同步從「整批 `.claude/skills/*`」收斂為「精確列出上述 4 個檔名」，不再誤擋 frontend-design。
 - 這三件在 CLAUDE.md §1 也釘著，因為它們是「一次犯錯、代價很大」的類型。
 
 ### 事 3：真正的槓桿是「隔離驗證 + 升降級」，不是「用更強的模型硬幹」
