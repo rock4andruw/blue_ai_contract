@@ -22,7 +22,7 @@
 
 Phase 1 的設計範圍明確限定為 **≤ 20 頁的文字型合約**（NDA、SLA），在此規模下：
 - 條款數量約 15–40 條
-- 整體流程（含 LLM 呼叫）實測 26 秒內完成
+- 整體流程（含 LLM 呼叫）實測 26 秒內完成（**2026-06-27 當時的數字，未含後續新增的 MAS、Layer 3、Coverage Guard**，現況約 40-60 秒，仍在可接受範圍，非效能退化，是新增誠實驗證機制的必然代價，詳見 `docs/architecture/技術棧.md`）
 - Needleman-Wunsch 在條款粒度（非字元粒度）運算，矩陣規模 ≤ 40×40，不構成瓶頸
 
 若日後需支援 50 頁以上 MSA，規劃在 Phase 2 評估以下替代方案：
@@ -88,7 +88,7 @@ Phase 1.5 的 MAS 設計**誠實定位**為「雙視角評估」，非「嚴格�
 - Agent A：最壞情況場景表（極端損失案例）
 - Agent B：台灣 SaaS 業界慣例標準
 
-即便底層相同，知識庫差異仍能產生有意義的觀點分歧——Demo 的 v3 pending 案例（67% pending 率）是實際驗證。
+即便底層相同，知識庫差異仍能產生有意義的觀點分歧——Demo 的 v3 pending 案例是實際驗證。（**2026-07-09 重跑確認更新**：v3 目前 2 個高風險條款皆為 pending，**100%** pending 率，非本文件寫作當時的 67%——與 `PROJECT_CONTEXT.md` 一致，已用 `scratchpad/test_v3_pending_rate.py` 實測驗證。）
 
 **Phase 2 改善**：引入 **Gemini（Agent A）+ Claude（Agent B）異質模型設計**，從根本消除 Echo Chamber。
 

@@ -22,7 +22,7 @@ Blue-AI 合約智能比對助理，讓法務與 PM 在 30 分鐘內完成過去�
 
 ### 智能風險分析（Layer 1：規則引擎）
 
-- Rule-based 風險引擎，15 條規則，預定義類別內 high-risk recall 100%
+- Rule-based 風險引擎，14 條規則，預定義類別內 high-risk recall 100%
 - 風險等級：高 / 中 / 低，含觸發原因與條款證據
 - 不依賴 LLM 做風險判斷，結果穩定可重現、免費、瞬間
 
@@ -62,6 +62,13 @@ Blue-AI 合約智能比對助理，讓法務與 PM 在 30 分鐘內完成過去�
 - Markdown 報告輸出
 - 審閱建議分層：必須協商 / 建議協商 / 可接受
 - 完整風險旗標表格供稽核追蹤
+
+### 資料安全
+
+- **資料生命週期**：上傳即加密存放，僅留存處理期間，處理完畢自動刪除；無雲端備份、零資料庫依賴（無持久化儲存 = 故障時無資料外洩風險）
+- **前端輸出轉義**：合約條款內容等使用者輸入資料渲染到頁面時統一經過 `escHtml()`/`escHtmlMd()` 轉義，避免惡意合約內容注入造成 XSS
+- **傳輸與存取**：合約文本送至 Anthropic Claude API 走企業級 DPA（零訓練承諾），整合 M365 Azure AD 做存取控制
+- **🔜 規劃中（Phase 2，非現況）**：送外部 LLM 前的敏感資料遮罩（PII/公司名/統編等），完整設計見 `docs/planning/脫敏系統規劃_LiteLLM_Presidio.md`
 
 ---
 
@@ -148,7 +155,7 @@ bule-ai-team/
 │       ├── parser.py                  # 文件解析（MD/PDF/DOCX，含表格交錯讀取）
 │       ├── alignment.py               # 條款對齊
 │       ├── diff_engine.py             # 差異比對
-│       ├── risk_engine.py             # 規則引擎（Layer 1，15 條規則）
+│       ├── risk_engine.py             # 規則引擎（Layer 1，14 條規則）
 │       ├── verifier.py                # Verification Agent（Layer 2，LLM 語意補漏）
 │       ├── llm_service.py             # LLM 摘要與協商建議 + Layer 3 依據檢索
 │       ├── precedent_corpus.py        # Layer 3：先例語料庫 + 向量檢索邏輯
@@ -203,7 +210,7 @@ bule-ai-team/
       ↓
 [Diff Engine]   → 新增 / 修改 / 刪除清單
       ↓
-[Risk Engine]   → risk_flag / risk_level / trigger_reason（Layer 1，15 條規則）
+[Risk Engine]   → risk_flag / risk_level / trigger_reason（Layer 1，14 條規則）
       ↓
 [Verification Agent] → LLM 語意補漏（Layer 2），與 Layer 1 交叉核對
       ↓
@@ -229,7 +236,7 @@ bule-ai-team/
 | LLM          | Gemini 3.1 Flash Lite（主）/ Claude Sonnet 4.6 · Haiku 4.5（備）/ template fallback  |
 | 文件解析     | pdfplumber + python-docx（含表格交錯讀取）+ 原生 MD parser                            |
 | 差異演算法   | difflib SequenceMatcher + Needleman-Wunsch DP                                         |
-| 風險分類     | Rule-based（Layer 1，15 條規則，純 Python）+ LLM 語意補漏（Layer 2）                  |
+| 風險分類     | Rule-based（Layer 1，14 條規則，純 Python）+ LLM 語意補漏（Layer 2）                  |
 | 協商依據檢索 | `mcp-taiwan-legal-db` 離線法條快取 + `gemini-embedding-2` 本地向量檢索（Layer 3） |
 | MAS          | ThreadPoolExecutor + Judge 矩陣（gap-based）                                          |
 | 後端         | FastAPI（`src/api/`，`run_in_threadpool` 確保並行請求不互相阻塞）                 |

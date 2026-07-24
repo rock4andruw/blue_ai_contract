@@ -20,7 +20,8 @@ subgraph P1["🟢 Phase 1 — MVP（已完成）"]
         PARSER["📄 Parser\nMD / PDF / DOCX（含原生表格解析）\nWord 追蹤修改標記自動清理"]
         ALIGN["🔗 Alignment\nLCS + 條款號比對\nNeedleman-Wunsch DP\n相似度後處理 ≥75%"]
         DIFF["🔀 Diff Engine\n新增 / 修改 / 刪除\nDiffItem 標準化輸出"]
-        RISK["🛡 Risk Rule Engine（Layer 1）\n15 條規則 · 純程式判斷，無 LLM\n預定義風險類別 100% 召回"]
+        COV["🛡️ Coverage Guard（2026-07-07 已上線）\n字元層級文字守恆檢查，97% 閾值\n防解析階段內容靜默遺漏"]
+        RISK["🛡 Risk Rule Engine（Layer 1）\n14 條規則 · 純程式判斷，無 LLM\n預定義風險類別 100% 召回"]
         VA["🔍 Verification Agent（Layer 2）\nLLM 語意補漏，只讀變動條款、不讀全文\n與規則引擎交叉核對，避免重複判斷\n疑似漏判案例自動記錄，供人工複核（不自動生規則）"]
         LLM["🤖 LLM Service\nGemini 3.1 Flash Lite（主）\nClaude Sonnet 4.6 / Haiku 4.5（備）\n無 API Key 時自動降級為內建模板\n統整摘要與原始檢索資料分開呈現，不混淆"]
 
@@ -35,6 +36,8 @@ subgraph P1["🟢 Phase 1 — MVP（已完成）"]
 
     RPT["📊 Report Generator\n報告輸出 · 審閱建議分層 · 雙重驗證標籤整合\nUI：法律依據摘要 + 原始檢索資料原文\n（法條原文框 / 相似先例框，分開顯示）"]
         PARSER --> ALIGN --> DIFF --> RISK --> VA --> LLM
+        DIFF -.->|原始文字 vs 解析後文字| COV
+        COV -.->|覆蓋率 < 97%| RPT
         LLM -->|高風險 flag，交叉驗證\n（LLM 分析後才觸發）| MA
         LLM -->|高風險 flag，交叉驗證| MB
         JG --> RPT
@@ -49,7 +52,7 @@ subgraph P1["🟢 Phase 1 — MVP（已完成）"]
         RPT -->|key_changes| ASK
         RPT -->|key_changes| MATRIX
 
-    subgraph L4["⚖️ Layer 3：協商建議依據檢索（已接入，2026-07-02；原始資料 UI 揭露 2026-07-03）"]
+    subgraph L3["⚖️ Layer 3：協商建議依據檢索（已接入，2026-07-02；原始資料 UI 揭露 2026-07-03）"]
         direction LR
         LAWCACHE["📖 法條快取\n離線查回真實民法／民訴法條文\n同步讀檔，Demo 現場無網路依賴"]
         PRECEDENT["🧭 先例向量檢索\n10 筆先例案例，真實向量嵌入\n本地相似度計算，非關鍵字比對"]
@@ -64,7 +67,7 @@ subgraph P1["🟢 Phase 1 — MVP（已完成）"]
     end
 
     subgraph EVAL["驗證指標"]
-        E1["📐 High-risk Recall: 100%\nOverall Detection: 67%（2026-07-03 復測）\n樣本: 38 筆 gold set\nMAS pending 率: v4=0% / v3=100%（2026-07-03 復測）"]
+        E1["📐 High-risk Recall: 100%（5/5）\nOverall Detection: 54%（12/22，2026-07-11 修正）\n樣本: 38 筆標註中 22 筆為 adverse\nMAS pending 率: v4=0% / v3=100%（實測重跑確認）"]
     end
 
     UI --> API --> PARSER
@@ -88,12 +91,17 @@ subgraph PRINCIPLE["核心設計原則"]
     PR3["🔒 資料不離開企業\nStateless API\n本地部署優先"]
 end
 
+SANITIZE["🔒 脫敏中間層（Phase 2 規劃中，非現況）\n自寫 sanitizer + 統一 llm_client chokepoint\n遮身分實體，留數字條件；server 不還原真名"]
+
 subgraph EXT["☁️ 外部服務（External Cloud）"]
     direction TB
     CLAUDE["🟠 Claude API\nclaude-sonnet-4-6\n備援 LLM · MAS Agent"]
     GEMINI["🔵 Gemini API\ngemini-3.1-flash-lite\n主要 LLM · MAS Agent"]
     AZURE["🔷 Azure\nBlob Storage · AD 認證\nApp Insights 監控"]
 end
+
+LLM -.->|Phase 2：規劃中，見脫敏規劃文件| SANITIZE
+SANITIZE -.->|Phase 2：規劃中| GEMINI
 
 USER --> UI
 API -.->|服務啟動時讀取| SK1
@@ -125,15 +133,17 @@ classDef judge fill:#061a10,stroke:#34d399,stroke-width:2px,color:#ecfdf5;
 classDef store fill:#0a1a12,stroke:#6ee7b7,stroke-width:1.5px,color:#ecfdf5;
 classDef extc fill:#0b1324,stroke:#818cf8,stroke-width:1.5px,color:#eef2ff;
 classDef verify fill:#06111b,stroke:#facc15,stroke-width:2px,color:#fefce8;
+classDef planned fill:#1a0f0f,stroke:#fb923c,stroke-width:2px,stroke-dasharray: 5 5,color:#fff7ed;
 
 class P1 done;
 class MAS done;
 class SKILLS skill;
-class L4 done;
+class L3 done;
 class ASKMATRIX done;
 class EXT ext;
 class PRINCIPLE principle;
 class PARSER,ALIGN,DIFF,RISK,LLM,RPT pipeline;
+class COV verify;
 class VA verify;
 class PLAYBOOK,ASK,MATRIX pipeline;
 class LAWCACHE,PRECEDENT verify;
@@ -143,3 +153,4 @@ class MB agent_b;
 class JG judge;
 class D1,D2,D3,EVAL,E1 store;
 class CLAUDE,GEMINI,AZURE extc;
+class SANITIZE planned;

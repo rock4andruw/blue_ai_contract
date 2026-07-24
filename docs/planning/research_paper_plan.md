@@ -76,7 +76,7 @@
         ▼                          ▼
   [Layer 1]                  [Layer 2]
   Risk Rule Engine            Verification Agent
-  15 條純 Python 規則          LLM 語意補漏掃描
+  14 條純 Python 規則          LLM 語意補漏掃描
   預定義類別內 100% 召回        捕獲 Regex 未覆蓋的非標準寫法
         │                          │
         └────────┬─────────────────┘
@@ -114,7 +114,7 @@
 | 系統 | 描述 |
 | --- | --- |
 | B1 — LLM Zero-shot | Diff 直接送 LLM，zero-shot 判斷風險 |
-| B2 — Rule Engine Only | 只跑 15 條規則，關掉 LLM |
+| B2 — Rule Engine Only | 只跑 14 條規則，關掉 LLM |
 | B3 — 本系統（無 MAS） | Rule Engine + LLM，無雙重驗證 |
 | **本系統（完整）** | Rule Engine + LLM + MAS 盲評 |
 
@@ -178,7 +178,7 @@
 第三章  系統設計與實作（20 頁）
     3.1 整體架構設計原則
     3.2 文件解析與條款對齊
-    3.3 風險規則引擎（15 條規則設計）
+    3.3 風險規則引擎（14 條規則設計）
     3.4 LLM 服務與協商對策生成
     3.5 MAS 盲評雙重驗證（核心貢獻）
     3.6 Pending 機制設計
