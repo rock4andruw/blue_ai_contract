@@ -1,0 +1,1741 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Blue-AI 合約智能比對助理</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=EB+Garamond:wght@500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --ink:         #1C2331;
+      --ink-light:   #5A6478;
+      --parchment:   #F5F4F0;
+      --surface:     #FFFFFF;
+      --gold:        #9A6F00;
+      --gold-light:  #FDF5DC;
+      --red:         #C41E3A;
+      --red-light:   #FEF0F2;
+      --green:       #2E7D4F;
+      --green-light: #EDF7F1;
+      --border:      #DDD8CE;
+      --border-mid:  #B8A990;
+      --radius:      4px;
+      --shadow:      0 1px 3px rgba(28,35,49,.07), 0 1px 2px rgba(28,35,49,.04);
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Inter", sans-serif;
+      background: var(--parchment);
+      color: var(--ink);
+      min-height: 100vh;
+      font-size: 14px;
+      line-height: 1.5;
+    }
+
+    /* ── Header ── */
+    header {
+      background: var(--ink);
+      color: #fff;
+      padding: 18px 36px;
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      border-bottom: 3px solid var(--gold);
+    }
+    header .logo { font-size: 22px; }
+    header h1 {
+      font-family: 'EB Garamond', Georgia, serif;
+      font-size: 21px;
+      font-weight: 600;
+      letter-spacing: .2px;
+    }
+    header p { font-size: 12px; opacity: .6; margin-top: 2px; letter-spacing: .2px; }
+
+    /* ── Layout ── */
+    .container { max-width: 980px; margin: 0 auto; padding: 28px 24px 72px; }
+
+    /* ── Card ── */
+    .card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 24px 28px;
+      margin-bottom: 14px;
+      box-shadow: var(--shadow);
+    }
+    .card-title {
+      font-family: 'EB Garamond', Georgia, serif;
+      font-size: 16px;
+      font-weight: 600;
+      color: var(--ink);
+      margin-bottom: 18px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding-bottom: 12px;
+      border-bottom: 1px solid var(--border);
+    }
+
+    /* ── Tabs ── */
+    .tabs {
+      display: flex;
+      gap: 0;
+      margin-bottom: 20px;
+      border-bottom: 1px solid var(--border);
+    }
+    .tab {
+      padding: 9px 20px;
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+      border: none;
+      background: none;
+      color: var(--ink-light);
+      border-bottom: 2px solid transparent;
+      margin-bottom: -1px;
+      transition: color .15s, border-color .15s;
+      letter-spacing: .2px;
+    }
+    .tab.active { color: var(--ink); border-bottom-color: var(--gold); }
+    .tab:hover:not(.active) { color: var(--ink); }
+
+    .tab-panel { display: none; }
+    .tab-panel.active { display: block; }
+
+    /* ── Upload zone ── */
+    .upload-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+    .upload-box {
+      border: 1px dashed var(--border-mid);
+      border-radius: var(--radius);
+      padding: 22px 16px;
+      text-align: center;
+      cursor: pointer;
+      transition: border-color .2s, background .2s;
+      background: var(--parchment);
+    }
+    .upload-box:hover, .upload-box.dragover {
+      border-color: var(--gold);
+      background: var(--gold-light);
+    }
+    .upload-box input[type=file] { display: none; }
+    .upload-box .icon { font-size: 24px; margin-bottom: 6px; }
+    .upload-box .label { font-size: 12px; color: var(--ink-light); line-height: 1.5; }
+    .upload-box .filename {
+      margin-top: 8px;
+      font-family: 'IBM Plex Mono', 'Courier New', monospace;
+      font-size: 11px;
+      font-weight: 500;
+      color: var(--gold);
+      word-break: break-all;
+    }
+
+    /* ── Example buttons ── */
+    .example-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; }
+    .example-btn {
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 14px 10px;
+      text-align: center;
+      cursor: pointer;
+      background: var(--surface);
+      transition: border-color .15s, box-shadow .15s;
+      font-size: 13px;
+    }
+    .example-btn:hover {
+      border-color: var(--gold);
+      box-shadow: 0 2px 8px rgba(154,111,0,.12);
+    }
+    .example-btn .badge {
+      display: inline-block;
+      font-family: 'IBM Plex Mono', 'Courier New', monospace;
+      font-size: 10px;
+      font-weight: 500;
+      padding: 2px 7px;
+      border-radius: 2px;
+      margin-bottom: 6px;
+      letter-spacing: .3px;
+      text-transform: uppercase;
+    }
+    .badge-red { background: var(--red-light); color: var(--red); }
+    .badge-yellow { background: var(--gold-light); color: var(--gold); }
+    .example-btn .desc { font-size: 11.5px; color: var(--ink-light); margin-top: 4px; line-height: 1.4; }
+
+    /* ── Sections count ── */
+    .sections-row {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-top: 16px;
+      font-size: 13px;
+      color: var(--ink-light);
+    }
+    .sections-row input[type=range] { width: 120px; accent-color: var(--gold); }
+    .sections-row span { font-weight: 600; color: var(--ink); min-width: 16px; }
+
+    /* ── Submit button ── */
+    .btn-primary {
+      display: block;
+      width: 100%;
+      margin-top: 20px;
+      padding: 12px;
+      background: var(--ink);
+      color: #fff;
+      font-size: 14px;
+      font-weight: 600;
+      border: none;
+      border-radius: var(--radius);
+      cursor: pointer;
+      transition: background .15s;
+      letter-spacing: .3px;
+    }
+    .btn-primary:hover { background: #2d3748; }
+    .btn-primary:disabled { opacity: .4; cursor: not-allowed; }
+
+    /* ── Loading ── */
+    #loading {
+      display: none;
+      text-align: center;
+      padding: 48px;
+      color: var(--ink-light);
+    }
+    .spinner {
+      width: 28px; height: 28px;
+      border: 2px solid var(--border);
+      border-top-color: var(--gold);
+      border-radius: 50%;
+      animation: spin .9s linear infinite;
+      margin: 0 auto 14px;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* ── Results ── */
+    #results { display: none; }
+    #results:focus { outline: none; }
+
+    .summary-bar {
+      display: flex;
+      gap: 12px;
+      flex-wrap: wrap;
+      margin-bottom: 14px;
+    }
+    .stat-box {
+      flex: 1;
+      min-width: 110px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 14px 16px;
+      text-align: center;
+      box-shadow: var(--shadow);
+    }
+    .stat-box .num {
+      font-family: 'EB Garamond', Georgia, serif;
+      font-size: 34px;
+      font-weight: 600;
+      line-height: 1;
+    }
+    .stat-box .lbl {
+      font-family: 'IBM Plex Mono', 'Courier New', monospace;
+      font-size: 10px;
+      color: var(--ink-light);
+      margin-top: 5px;
+      letter-spacing: .4px;
+      text-transform: uppercase;
+    }
+    .stat-red .num { color: var(--red); }
+    .stat-yellow .num { color: var(--gold); }
+    .stat-blue .num { color: var(--ink); }
+
+    /* verdict banner */
+    .verdict {
+      border-radius: var(--radius);
+      padding: 12px 18px;
+      font-size: 14px;
+      font-weight: 600;
+      margin-bottom: 14px;
+      border-left: 4px solid;
+      letter-spacing: .2px;
+    }
+    .verdict-high   { background: var(--red-light);   color: var(--red);   border-left-color: var(--red);   }
+    .verdict-medium { background: var(--gold-light);  color: var(--gold);  border-left-color: var(--gold);  }
+    .verdict-low,
+    .verdict-none   { background: var(--green-light); color: var(--green); border-left-color: var(--green); }
+
+    /* ── Key changes — SIGNATURE: colored margin stripe ── */
+    .change-item {
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      margin-bottom: 8px;
+      overflow: hidden;
+    }
+    .change-header {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 11px 16px;
+      cursor: pointer;
+      background: var(--surface);
+      user-select: none;
+      border-left: 4px solid var(--border-mid);
+    }
+    .change-header:hover { background: var(--parchment); }
+
+    /* margin annotation stripe by risk — the design's signature element */
+    .change-item-high   .change-header { border-left-color: var(--red); }
+    .change-item-medium .change-header { border-left-color: var(--gold); }
+    .change-item-low    .change-header { border-left-color: var(--green); }
+
+    .change-rank {
+      font-family: 'IBM Plex Mono', 'Courier New', monospace;
+      font-size: 11px;
+      color: var(--ink-light);
+      min-width: 20px;
+    }
+    .risk-badge {
+      font-family: 'IBM Plex Mono', 'Courier New', monospace;
+      font-size: 10px;
+      font-weight: 500;
+      padding: 2px 7px;
+      border-radius: 2px;
+      flex-shrink: 0;
+      text-transform: uppercase;
+      letter-spacing: .3px;
+    }
+    .risk-high   { background: var(--red-light);   color: var(--red);   }
+    .risk-medium { background: var(--gold-light);  color: var(--gold);  }
+    .risk-low    { background: var(--green-light); color: var(--green); }
+    .change-title  { font-size: 13px; font-weight: 600; flex: 1; }
+    .change-clause {
+      font-family: 'IBM Plex Mono', 'Courier New', monospace;
+      font-size: 11px;
+      color: var(--ink-light);
+    }
+    .chevron { font-size: 10px; color: var(--ink-light); transition: transform .2s; }
+    .chevron.open { transform: rotate(180deg); }
+
+    .change-body {
+      padding: 16px 20px;
+      border-top: 1px solid var(--border);
+      display: none;
+      font-size: 13px;
+      line-height: 1.65;
+      background: var(--parchment);
+    }
+    .change-body.open { display: block; }
+    .change-body .field-label {
+      font-family: 'IBM Plex Mono', 'Courier New', monospace;
+      font-size: 10px;
+      font-weight: 500;
+      color: var(--ink-light);
+      text-transform: uppercase;
+      letter-spacing: .5px;
+      margin-top: 14px;
+      margin-bottom: 5px;
+    }
+    .change-body .field-label:first-child { margin-top: 0; }
+    .options-list { list-style: none; padding: 0; }
+    .options-list li {
+      padding: 6px 10px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      margin-bottom: 5px;
+      font-size: 12.5px;
+    }
+    .options-list li::before { content: "→ "; color: var(--gold); font-weight: 700; }
+
+    /* risk flags table */
+    .risk-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+    .risk-table th {
+      text-align: left;
+      padding: 8px 12px;
+      background: var(--parchment);
+      font-family: 'IBM Plex Mono', 'Courier New', monospace;
+      font-size: 10px;
+      color: var(--ink-light);
+      font-weight: 500;
+      text-transform: uppercase;
+      letter-spacing: .4px;
+      border-bottom: 1px solid var(--border);
+    }
+    .risk-table td { padding: 9px 12px; border-bottom: 1px solid var(--border); vertical-align: top; }
+    .risk-table tr:last-child td { border-bottom: none; }
+    .risk-table td:first-child {
+      font-family: 'IBM Plex Mono', 'Courier New', monospace;
+      font-size: 12px;
+      font-weight: 500;
+    }
+
+    /* review advice */
+    .advice-row { display: flex; gap: 8px; flex-wrap: wrap; }
+    .advice-chip {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      padding: 6px 12px;
+      border-radius: 2px;
+      font-size: 12px;
+      font-weight: 600;
+      border: 1px solid;
+    }
+    .chip-must    { background: var(--red-light);   color: var(--red);   border-color: #FACDD3; }
+    .chip-suggest { background: var(--gold-light);  color: var(--gold);  border-color: #EDD68A; }
+    .chip-ok      { background: var(--green-light); color: var(--green); border-color: #B6E2C8; }
+
+    /* ── Diff block (原文對照) ── */
+    .diff-toggle {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 10px;
+      font-weight: 600;
+      padding: 2px 8px;
+      border-radius: 2px;
+      border: 1px solid var(--border);
+      background: var(--surface);
+      color: var(--ink-light);
+      cursor: pointer;
+      letter-spacing: .3px;
+      text-transform: uppercase;
+      transition: border-color .15s, color .15s;
+      margin-left: 6px;
+      vertical-align: middle;
+    }
+    .diff-toggle:hover { border-color: var(--gold); color: var(--gold); }
+    .diff-toggle.open  { border-color: var(--gold); color: var(--gold); background: var(--gold-light); }
+
+    .diff-block { display: none; margin-top: 10px; border-radius: 3px; overflow: hidden; }
+    .diff-block.open { display: block; }
+
+    .diff-half {
+      padding: 10px 14px;
+      font-size: 12.5px;
+      line-height: 1.65;
+      color: var(--ink);
+      white-space: pre-wrap;
+      word-break: break-word;
+    }
+    .diff-half + .diff-half { margin-top: 4px; }
+
+    .diff-original {
+      background: var(--red-light);
+      border-left: 3px solid var(--red);
+    }
+    .diff-original::before {
+      content: "原始條款";
+      display: block;
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 10px;
+      color: var(--red);
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: .4px;
+      margin-bottom: 6px;
+      opacity: .75;
+    }
+    .diff-revised {
+      background: var(--green-light);
+      border-left: 3px solid var(--green);
+    }
+    .diff-revised::before {
+      content: "修訂條款";
+      display: block;
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 10px;
+      color: var(--green);
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: .4px;
+      margin-bottom: 6px;
+      opacity: .75;
+    }
+    .diff-empty {
+      font-style: italic;
+      opacity: .5;
+      font-size: 12px;
+    }
+    .attr-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 11px;
+      font-weight: 600;
+      padding: 4px 10px;
+      border-radius: 2px;
+      letter-spacing: .3px;
+      margin-bottom: 10px;
+    }
+    .attr-inserted { background: var(--green-light); color: var(--green); border: 1px solid #B6E2C8; }
+    .attr-deleted  { background: var(--red-light);   color: var(--red);   border: 1px solid #FACDD3; }
+    .attr-modified { background: var(--gold-light);  color: var(--gold);  border: 1px solid #EDD68A; }
+
+    /* ── Negotiate button ── */
+    .negotiate-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 10px;
+      font-weight: 600;
+      padding: 3px 10px;
+      border-radius: 2px;
+      border: 1px solid var(--border);
+      background: var(--surface);
+      color: var(--ink-light);
+      cursor: pointer;
+      letter-spacing: .3px;
+      text-transform: uppercase;
+      transition: border-color .15s, color .15s, background .15s;
+      margin-left: 6px;
+      vertical-align: middle;
+    }
+    .negotiate-btn:hover:not(:disabled) { border-color: #2563EB; color: #2563EB; background: #EFF6FF; }
+    .negotiate-btn:disabled { opacity: .55; cursor: not-allowed; }
+
+    /* ── Playbook three-tier result ── */
+    .playbook-result { margin-top: 10px; display: none; }
+    .playbook-result.visible { display: block; }
+    .tier-block {
+      padding: 10px 14px;
+      border-radius: 3px;
+      margin-bottom: 6px;
+      font-size: 12.5px;
+      line-height: 1.65;
+    }
+    .tier-label {
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 10px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: .5px;
+      margin-bottom: 4px;
+    }
+    .tier-green  { background: var(--green-light); border-left: 3px solid var(--green); }
+    .tier-green  .tier-label { color: var(--green); }
+    .tier-yellow { background: var(--gold-light);  border-left: 3px solid var(--gold);  }
+    .tier-yellow .tier-label { color: var(--gold); }
+    .tier-red    { background: var(--red-light);   border-left: 3px solid var(--red);   }
+    .tier-red    .tier-label { color: var(--red); }
+    .tier-clause {
+      margin-top: 6px;
+      padding: 7px 10px;
+      background: rgba(255,255,255,.65);
+      border-radius: 2px;
+      font-size: 12px;
+      color: var(--ink);
+      white-space: pre-wrap;
+      word-break: break-word;
+    }
+    .tier-clause::before {
+      content: "建議條款文字";
+      display: block;
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 9.5px;
+      font-weight: 600;
+      letter-spacing: .4px;
+      text-transform: uppercase;
+      opacity: .6;
+      margin-bottom: 4px;
+    }
+
+    /* ── Report Q&A（批註形式，不是聊天泡泡） ── */
+    .ask-row {
+      display: flex;
+      gap: 8px;
+      margin-bottom: 4px;
+    }
+    .ask-input {
+      flex: 1;
+      padding: 9px 12px;
+      border: 1px solid var(--border-mid);
+      border-radius: var(--radius);
+      background: var(--surface);
+      font-size: 13px;
+      color: var(--ink);
+      font-family: inherit;
+    }
+    .ask-input:focus { outline: none; border-color: var(--gold); }
+    .ask-input::placeholder { color: var(--ink-light); opacity: .6; }
+    .ask-submit {
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 11px;
+      font-weight: 600;
+      letter-spacing: .3px;
+      text-transform: uppercase;
+      padding: 0 16px;
+      border: 1px solid var(--border-mid);
+      border-radius: var(--radius);
+      background: var(--ink);
+      color: #fff;
+      cursor: pointer;
+      transition: background .15s;
+    }
+    .ask-submit:hover:not(:disabled) { background: #2E3A52; }
+    .ask-submit:disabled { opacity: .5; cursor: not-allowed; }
+    .ask-hint { font-size: 11px; color: var(--ink-light); opacity: .7; margin-top: 4px; }
+
+    .qa-log { margin-top: 14px; }
+    .qa-pair { margin-bottom: 12px; }
+    .qa-question {
+      font-size: 12.5px;
+      color: var(--ink-light);
+      margin-bottom: 5px;
+    }
+    .qa-question::before {
+      content: "提問";
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 9.5px;
+      font-weight: 700;
+      letter-spacing: .4px;
+      text-transform: uppercase;
+      opacity: .55;
+      margin-right: 7px;
+    }
+    .qa-answer {
+      padding: 10px 14px;
+      border-radius: 3px;
+      font-size: 13px;
+      line-height: 1.65;
+      position: relative;
+    }
+    .qa-answer .qa-tag {
+      display: inline-block;
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 9.5px;
+      font-weight: 700;
+      letter-spacing: .4px;
+      text-transform: uppercase;
+      margin-bottom: 5px;
+    }
+    .qa-answer.grounded {
+      background: var(--gold-light);
+      border-left: 3px solid var(--gold);
+    }
+    .qa-answer.grounded .qa-tag { color: var(--gold); }
+    .qa-answer.ungrounded {
+      background: var(--parchment);
+      border-left: 3px dashed var(--border-mid);
+      color: var(--ink-light);
+    }
+    .qa-answer.ungrounded .qa-tag { color: var(--ink-light); }
+
+    /* ── Negotiation matrix（附表，可列印） ── */
+    .matrix-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 12.5px;
+      margin-top: 12px;
+    }
+    .matrix-table th {
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 10px;
+      font-weight: 700;
+      letter-spacing: .3px;
+      text-transform: uppercase;
+      color: var(--ink-light);
+      text-align: left;
+      padding: 8px 10px;
+      border-bottom: 1px solid var(--border-mid);
+      white-space: nowrap;
+    }
+    .matrix-table td {
+      font-family: 'EB Garamond', Georgia, serif;
+      font-size: 13.5px;
+      line-height: 1.55;
+      padding: 10px;
+      border-bottom: 1px solid var(--border);
+      vertical-align: top;
+    }
+    .matrix-table tr.risk-high td:first-child { border-left: 3px solid var(--red); }
+    .matrix-table tr.risk-medium td:first-child { border-left: 3px solid var(--gold); }
+    .matrix-table tr.risk-low td:first-child { border-left: 3px solid var(--green); }
+    .matrix-table td:first-child { font-family: 'IBM Plex Mono', monospace; font-size: 12px; white-space: nowrap; }
+    .matrix-legal { font-size: 11.5px; color: var(--ink-light); }
+    .matrix-empty { font-size: 12px; color: var(--ink-light); font-style: italic; padding: 8px 0; }
+
+    @media print {
+      body * { visibility: hidden; }
+      #matrix-print-area, #matrix-print-area * { visibility: visible; }
+      #matrix-print-area { position: absolute; top: 0; left: 0; width: 100%; }
+      .matrix-btn { display: none; }
+    }
+
+    /* ── MAS badges ── */
+    .mas-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 9.5px;
+      font-weight: 700;
+      padding: 2px 8px;
+      border-radius: 2px;
+      letter-spacing: .4px;
+      text-transform: uppercase;
+      margin-left: 8px;
+      vertical-align: middle;
+    }
+    .mas-confirmed { background: var(--green-light); color: var(--green); border: 1px solid #A8D5B8; }
+    .mas-pending   { background: var(--gold-light);  color: var(--gold);  border: 1px solid #EDD68A; }
+    .mas-views {
+      margin-top: 10px;
+      border: 1px solid var(--border);
+      border-radius: 3px;
+      overflow: hidden;
+      font-size: 12.5px;
+    }
+    .mas-view-row {
+      display: flex;
+      gap: 0;
+    }
+    .mas-view-half {
+      flex: 1;
+      padding: 10px 12px;
+      line-height: 1.55;
+    }
+    .mas-view-half:first-child { border-right: 1px solid var(--border); }
+    .mas-view-label {
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 9.5px;
+      font-weight: 700;
+      letter-spacing: .4px;
+      text-transform: uppercase;
+      margin-bottom: 5px;
+      opacity: .65;
+    }
+    .mas-view-a { background: #FEF7F0; }
+    .mas-view-b { background: #F0F7FE; }
+
+    /* Layer 4 raw source provenance (MCP legal cache / vector precedent corpus) */
+    .source-block {
+      margin-top: 8px;
+      padding: 10px 12px;
+      border-radius: var(--radius);
+      border-left: 3px solid var(--border-mid);
+      font-size: 12.5px;
+      line-height: 1.55;
+      color: var(--ink-light);
+    }
+    .source-block + .source-block { margin-top: 6px; }
+    .source-mcp    { background: #F0F7FE; border-left-color: #5B8DBF; }
+    .source-vector { background: #F5F0FB; border-left-color: #8C6FB0; }
+    .source-label {
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 9.5px;
+      font-weight: 700;
+      letter-spacing: .4px;
+      text-transform: uppercase;
+      margin-bottom: 4px;
+      opacity: .7;
+    }
+
+    /* download */
+    .btn-dl {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 8px 14px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      font-size: 12px;
+      font-weight: 600;
+      cursor: pointer;
+      text-decoration: none;
+      color: var(--ink-light);
+      transition: border-color .15s, color .15s, background .15s;
+      letter-spacing: .2px;
+    }
+    .btn-dl:hover { border-color: var(--gold); color: var(--gold); background: var(--gold-light); }
+
+    /* meta info */
+    .meta { font-size: 11.5px; color: var(--ink-light); margin-bottom: 14px; }
+    .mode-badge {
+      display: inline-block;
+      font-family: 'IBM Plex Mono', 'Courier New', monospace;
+      font-size: 10px;
+      padding: 2px 7px;
+      border-radius: 2px;
+      background: var(--parchment);
+      color: var(--ink-light);
+      border: 1px solid var(--border);
+      font-weight: 500;
+      text-transform: uppercase;
+      letter-spacing: .3px;
+    }
+
+    /* error */
+    #error-box {
+      display: none;
+      background: var(--red-light);
+      color: var(--red);
+      border-radius: var(--radius);
+      border-left: 4px solid var(--red);
+      padding: 12px 16px;
+      margin-bottom: 14px;
+      font-size: 13px;
+    }
+
+    /* button resets */
+    button.upload-box, button.example-btn { font-family: inherit; width: 100%; }
+    button.change-header { width: 100%; text-align: left; font-family: inherit; font-size: inherit; }
+
+    /* ── Hero strip ── */
+    .hero-strip {
+      background: var(--ink);
+      border-bottom: 1px solid rgba(255,255,255,.08);
+      display: flex;
+      flex-direction: column;
+      align-items: stretch;
+    }
+    .hero-metrics-row {
+      display: flex;
+      justify-content: center;
+      align-items: stretch;
+    }
+    .hero-metric {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      padding: 16px 48px;
+      color: #fff;
+      cursor: pointer;
+      position: relative;
+      transition: background .15s;
+      border: none;
+      background: transparent;
+      text-align: left;
+      font-family: inherit;
+    }
+    .hero-metric:hover { background: rgba(255,255,255,.04); }
+    .hero-metric.active { background: rgba(255,255,255,.06); }
+    .hero-num {
+      font-family: 'EB Garamond', Georgia, serif;
+      font-size: 38px;
+      font-weight: 600;
+      color: #E8C96A;
+      line-height: 1;
+      white-space: nowrap;
+    }
+    .hero-unit { font-size: 20px; margin-left: 2px; }
+    .hero-desc { font-size: 12px; line-height: 1.55; opacity: .85; }
+    .hero-label { font-weight: 600; font-size: 12.5px; }
+    .hero-sub  { opacity: .55; font-size: 11px; }
+    .hero-chevron {
+      font-size: 9px;
+      opacity: .4;
+      margin-left: 4px;
+      transition: transform .2s;
+      display: inline-block;
+    }
+    .hero-metric.active .hero-chevron { transform: rotate(180deg); opacity: .7; }
+    .hero-divider {
+      width: 1px;
+      background: rgba(255,255,255,.12);
+      margin: 12px 0;
+    }
+    .hero-detail {
+      display: none;
+      background: rgba(255,255,255,.05);
+      border-top: 1px solid rgba(255,255,255,.08);
+      padding: 14px 48px;
+      color: rgba(255,255,255,.75);
+      font-size: 12.5px;
+      line-height: 1.7;
+      animation: fadeIn .15s ease;
+    }
+    .hero-detail.open { display: block; }
+    @keyframes fadeIn { from { opacity: 0; transform: translateY(-4px); } to { opacity: 1; transform: none; } }
+
+    /* ── Loading stages (horizontal stepper) ── */
+    .loading-stages {
+      display: flex;
+      align-items: flex-start;
+      justify-content: center;
+      margin: 20px auto 0;
+      max-width: 520px;
+    }
+    .stage-step {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 8px;
+      flex: 0 0 auto;
+    }
+    .step-circle {
+      width: 34px; height: 34px;
+      border-radius: 50%;
+      border: 2px solid var(--border);
+      background: var(--surface);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--ink-light);
+      transition: all .3s;
+    }
+    .stage-step.active .step-circle {
+      border-color: var(--gold);
+      background: var(--gold-light);
+      color: var(--gold);
+      animation: pulse-circle 1.2s ease-in-out infinite;
+    }
+    .stage-step.done .step-circle {
+      border-color: var(--green);
+      background: var(--green);
+      color: #fff;
+      font-size: 14px;
+    }
+    .step-label {
+      font-size: 10.5px;
+      color: var(--ink-light);
+      text-align: center;
+      opacity: .35;
+      transition: opacity .3s;
+      white-space: nowrap;
+      line-height: 1.4;
+    }
+    .stage-step.active .step-label { opacity: 1; color: var(--ink); }
+    .stage-step.done   .step-label { opacity: .6; }
+    .step-line {
+      flex: 1;
+      height: 2px;
+      background: var(--border);
+      margin-top: 16px;
+      min-width: 24px;
+      transition: background .4s;
+    }
+    .step-line.done { background: var(--green); }
+    @keyframes pulse-circle {
+      0%, 100% { box-shadow: 0 0 0 3px rgba(154,111,0,.12); }
+      50%       { box-shadow: 0 0 0 7px rgba(154,111,0,.22); }
+    }
+
+    /* ── Result header ── */
+    .result-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 12px;
+    }
+    .result-header-title {
+      font-family: 'EB Garamond', Georgia, serif;
+      font-size: 17px;
+      font-weight: 600;
+      color: var(--ink);
+    }
+    .result-time-badge {
+      font-family: 'IBM Plex Mono', 'Courier New', monospace;
+      font-size: 11px;
+      padding: 3px 9px;
+      border-radius: 2px;
+      background: var(--green-light);
+      color: var(--green);
+      border: 1px solid #B6E2C8;
+      font-weight: 500;
+    }
+
+    /* ── Verdict (upgraded) ── */
+    .verdict {
+      border-radius: var(--radius);
+      padding: 16px 20px;
+      font-size: 16px;
+      font-weight: 600;
+      margin-bottom: 14px;
+      border-left: 5px solid;
+      letter-spacing: .2px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .verdict-detail {
+      font-size: 12px;
+      font-weight: 400;
+      opacity: .7;
+      margin-top: 3px;
+    }
+    .verdict-high   { background: var(--red-light);   color: var(--red);   border-left-color: var(--red);   }
+    .verdict-medium { background: var(--gold-light);  color: var(--gold);  border-left-color: var(--gold);  }
+    .verdict-low,
+    .verdict-none   { background: var(--green-light); color: var(--green); border-left-color: var(--green); }
+    .verdict-icon { font-size: 22px; flex-shrink: 0; }
+
+    /* ── Recall badge in risk table ── */
+    .recall-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 10px;
+      font-weight: 500;
+      padding: 2px 8px;
+      background: var(--green-light);
+      color: var(--green);
+      border: 1px solid #B6E2C8;
+      border-radius: 2px;
+      letter-spacing: .3px;
+      margin-left: 8px;
+      vertical-align: middle;
+    }
+  </style>
+</head>
+<body>
+
+<header>
+  <div class="logo" aria-hidden="true">⚖️</div>
+  <div>
+    <h1>Blue-AI 合約智能比對助理</h1>
+    <p>像有一個資深法務顧問幫你審合約</p>
+  </div>
+</header>
+
+<!-- Hero strip -->
+<div class="hero-strip">
+  <div class="hero-metrics-row">
+    <button class="hero-metric" onclick="toggleHero(0)" id="hero-btn-0" aria-expanded="false">
+      <span class="hero-num">60<span class="hero-unit">秒</span></span>
+      <div class="hero-desc">
+        <div class="hero-label">完成合約初審 <span class="hero-chevron">▼</span></div>
+        <span class="hero-sub">人工平均需要 92 分鐘</span>
+      </div>
+    </button>
+    <div class="hero-divider"></div>
+    <button class="hero-metric" onclick="toggleHero(1)" id="hero-btn-1" aria-expanded="false">
+      <span class="hero-num">100<span class="hero-unit">%</span></span>
+      <div class="hero-desc">
+        <div class="hero-label">高風險零漏判 <span class="hero-chevron">▼</span></div>
+        <span class="hero-sub">38 筆人工驗證，零漏判</span>
+      </div>
+    </button>
+    <div class="hero-divider"></div>
+    <button class="hero-metric" onclick="toggleHero(2)" id="hero-btn-2" aria-expanded="false">
+      <span class="hero-num" style="font-size:28px;">雙重<br>把關</span>
+      <div class="hero-desc">
+        <div class="hero-label">規則引擎 + AI 各司其職 <span class="hero-chevron">▼</span></div>
+        <span class="hero-sub">不讓 AI 自己猜風險</span>
+      </div>
+    </button>
+  </div>
+  <div class="hero-detail" id="hero-detail-0">
+    根據 LawGeex Study，人工審閱一份 NDA 平均需要 <strong style="color:#E8C96A;">92 分鐘</strong>。本系統完成差異比對、風險標記、LLM 摘要、多視角驗證僅需 <strong style="color:#E8C96A;">1 分鐘</strong>，加上法務確認 30 分鐘，總計 31 分鐘。
+  </div>
+  <div class="hero-detail" id="hero-detail-1">
+    基於 gold set 驗證（18 筆條款，v2+v4）：<strong style="color:#E8C96A;">高風險 Recall = 100%</strong>（5/5 發現）、<strong style="color:#E8C96A;">整體偵測率 67%</strong>（12/18 偵測）。採保守設計——優先不漏判，確保高風險不會被遺漏。
+  </div>
+  <div class="hero-detail" id="hero-detail-2">
+    <strong style="color:#E8C96A;">規則引擎</strong>負責判定風險等級（確定性邏輯，不受 AI 幻覺影響），<strong style="color:#E8C96A;">LLM</strong> 只負責把風險翻成白話並給出協商對策。兩者各司其職——高風險由規則把關，AI 負責解釋，不靠 AI 猜測是否有風險。
+  </div>
+</div>
+
+<div class="container">
+
+  <!-- Input card -->
+  <div class="card">
+    <div class="card-title"><span aria-hidden="true">⚖️</span> 合約比對</div>
+
+    <div class="tabs" role="tablist">
+      <button class="tab active" role="tab" id="tab-btn-upload" aria-selected="true" aria-controls="tab-upload" onclick="switchTab('upload')">上傳合約</button>
+      <button class="tab" role="tab" id="tab-btn-example" aria-selected="false" aria-controls="tab-example" onclick="switchTab('example')">範例模式</button>
+    </div>
+
+    <!-- Upload tab -->
+    <div id="tab-upload" class="tab-panel active" role="tabpanel" aria-labelledby="tab-btn-upload">
+      <div class="upload-grid">
+        <div>
+          <label for="file-orig" style="font-size:12px;font-weight:600;color:#374151;margin-bottom:8px;display:block;">原始合約（甲方版本）</label>
+          <button type="button" class="upload-box" id="drop-orig" aria-label="上傳原始合約（甲方版本），支援 PDF、DOCX、MD 格式" onclick="document.getElementById('file-orig').click()">
+            <input type="file" id="file-orig" accept=".pdf,.docx,.md,.txt" onchange="onFileSelected('orig', this)">
+            <div class="icon" aria-hidden="true">📄</div>
+            <div class="label">點擊或拖曳上傳<br>PDF / DOCX / MD</div>
+            <div class="filename" id="fname-orig"></div>
+          </button>
+        </div>
+        <div>
+          <label for="file-rev" style="font-size:12px;font-weight:600;color:#374151;margin-bottom:8px;display:block;">修訂合約（供應商版本）</label>
+          <button type="button" class="upload-box" id="drop-rev" aria-label="上傳修訂合約（供應商版本），支援 PDF、DOCX、MD 格式" onclick="document.getElementById('file-rev').click()">
+            <input type="file" id="file-rev" accept=".pdf,.docx,.md,.txt" onchange="onFileSelected('rev', this)">
+            <div class="icon" aria-hidden="true">📝</div>
+            <div class="label">點擊或拖曳上傳<br>PDF / DOCX / MD</div>
+            <div class="filename" id="fname-rev"></div>
+          </button>
+        </div>
+      </div>
+      <button class="btn-primary" id="btn-upload" onclick="runUpload()" disabled>開始比對</button>
+    </div>
+
+    <!-- Example tab -->
+    <div id="tab-example" class="tab-panel" role="tabpanel" aria-labelledby="tab-btn-example">
+      <div style="font-size:13px;color:var(--ink-light);margin-bottom:14px;">
+        選擇範例合約組合（v2-v5 以「SLA-like Base Contract v1」為基準；v6 為獨立的軟體維護合約範例）：
+      </div>
+      <div class="example-grid">
+        <button type="button" class="example-btn" onclick="runExample('v2')">
+          <div class="badge badge-red">高風險</div>
+          <div style="font-weight:700;">v2 服務降級</div>
+          <div class="desc">SLA 可用率放寬<br>回應時間拉長</div>
+        </button>
+        <button type="button" class="example-btn" onclick="runExample('v3')">
+          <div class="badge badge-red">高風險</div>
+          <div style="font-weight:700;">v3 責任加重</div>
+          <div class="desc">賠償上限縮水<br>責任條款不利</div>
+        </button>
+        <button type="button" class="example-btn" onclick="runExample('v4')">
+          <div class="badge badge-red">高風險</div>
+          <div style="font-weight:700;">v4 保護刪減</div>
+          <div class="desc">保護條款消失<br>免責範圍擴大</div>
+        </button>
+        <button type="button" class="example-btn" onclick="runExample('v5')">
+          <div class="badge badge-yellow">中風險</div>
+          <div style="font-weight:700;">v5 終止偏甲方</div>
+          <div class="desc">終止條件改變<br>通知期調整</div>
+        </button>
+        <button type="button" class="example-btn" onclick="runExample('v6')">
+          <div class="badge badge-red">高風險</div>
+          <div style="font-weight:700;">v6 違約金費率</div>
+          <div class="desc">中文分數費率變化<br>Verification Agent 補漏</div>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Loading -->
+  <div id="loading" aria-live="polite" aria-label="分析中，請稍候">
+    <div class="spinner" aria-hidden="true"></div>
+    <div style="margin-bottom:20px;color:var(--ink-light);font-size:13px;">分析中，請稍候…</div>
+    <div class="loading-stages">
+      <div class="stage-step" id="stage-1">
+        <div class="step-circle">1</div>
+        <div class="step-label">解析文件</div>
+      </div>
+      <div class="step-line" id="line-1"></div>
+      <div class="stage-step" id="stage-2">
+        <div class="step-circle">2</div>
+        <div class="step-label">條款對齊</div>
+      </div>
+      <div class="step-line" id="line-2"></div>
+      <div class="stage-step" id="stage-3">
+        <div class="step-circle">3</div>
+        <div class="step-label">風險標記</div>
+      </div>
+      <div class="step-line" id="line-3"></div>
+      <div class="stage-step" id="stage-4">
+        <div class="step-circle">4</div>
+        <div class="step-label">LLM 摘要</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Error -->
+  <div id="error-box" role="alert"></div>
+
+  <!-- Results -->
+  <div id="results" tabindex="-1">
+
+    <!-- Result header -->
+    <div class="result-header">
+      <div class="result-header-title">分析完成</div>
+      <div class="result-time-badge" id="result-time-badge"></div>
+    </div>
+
+    <!-- Meta -->
+    <div class="meta" id="result-meta"></div>
+
+    <!-- Coverage Guard alert (if needed) -->
+    <div id="coverage-guard-alert"></div>
+
+    <!-- Verdict -->
+    <div class="verdict" id="result-verdict"></div>
+
+    <!-- Stats -->
+    <div class="summary-bar" id="result-stats"></div>
+
+    <!-- Key changes -->
+    <div class="card">
+      <div class="card-title"><span aria-hidden="true">🔍</span> 主要變更重點</div>
+      <div id="result-changes"></div>
+    </div>
+
+    <!-- Review advice -->
+    <div class="card">
+      <div class="card-title"><span aria-hidden="true">📋</span> 審閱建議</div>
+      <div class="advice-row" id="result-advice"></div>
+    </div>
+
+    <!-- Risk flags table -->
+    <div class="card">
+      <div class="card-title">
+        <span aria-hidden="true">🚩</span> 完整風險旗標
+        <span class="recall-badge">✓ Rule Engine 驗證 · 高風險 100% 召回</span>
+      </div>
+      <div style="overflow-x:auto;">
+        <table class="risk-table">
+          <thead>
+            <tr>
+              <th>條款</th>
+              <th>風險等級</th>
+              <th>來源</th>
+              <th>風險類型</th>
+              <th>觸發原因</th>
+            </tr>
+          </thead>
+          <tbody id="result-flags"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- Report Q&A -->
+    <div class="card">
+      <div class="card-title"><span aria-hidden="true">💬</span> 報告問答</div>
+      <div class="ask-row">
+        <input type="text" class="ask-input" id="ask-input" placeholder="針對這份報告提問，例如：為什麼這條被標高風險？"
+               onkeydown="if(event.key==='Enter') askQuestion();">
+        <button class="ask-submit" id="ask-submit" onclick="askQuestion()">提問</button>
+      </div>
+      <div class="ask-hint">只根據這份報告的內容回答；報告沒提到的資訊會誠實告知查無資料，不會編造。</div>
+      <div class="qa-log" id="qa-log"></div>
+    </div>
+
+    <!-- Negotiation matrix -->
+    <div class="card">
+      <div class="card-title"><span aria-hidden="true">📊</span> 協商矩陣</div>
+      <button class="negotiate-btn matrix-btn" id="matrix-btn" onclick="exportMatrix()">📋 匯出協商矩陣（高風險條款）</button>
+      <div id="matrix-area"></div>
+    </div>
+
+    <!-- Download -->
+    <div style="text-align:right;margin-top:-6px;">
+      <a class="btn-dl" id="btn-download" href="#" download="contract_report.md">
+        <span aria-hidden="true">⬇</span> 下載完整報告 (.md)
+      </a>
+    </div>
+
+  </div><!-- /results -->
+
+</div><!-- /container -->
+
+<script>
+  const API = 'http://localhost:8000';
+
+  // ── Tab switch ────────────────────────────────────────────────────────────
+  function switchTab(t) {
+    document.querySelectorAll('.tab').forEach((el, i) => {
+      const isActive = (i === 0 && t === 'upload') || (i === 1 && t === 'example');
+      el.classList.toggle('active', isActive);
+      el.setAttribute('aria-selected', isActive ? 'true' : 'false');
+    });
+    document.getElementById('tab-upload').classList.toggle('active', t === 'upload');
+    document.getElementById('tab-example').classList.toggle('active', t === 'example');
+  }
+
+  // ── File upload ───────────────────────────────────────────────────────────
+  function onFileSelected(side, input) {
+    const name = input.files[0]?.name || '';
+    document.getElementById(`fname-${side}`).textContent = name;
+    const orig = document.getElementById('file-orig').files.length;
+    const rev  = document.getElementById('file-rev').files.length;
+    document.getElementById('btn-upload').disabled = !(orig && rev);
+  }
+
+  // drag & drop
+  ['orig','rev'].forEach(side => {
+    const box = document.getElementById(`drop-${side}`);
+    box.addEventListener('dragover', e => { e.preventDefault(); box.classList.add('dragover'); });
+    box.addEventListener('dragleave', () => box.classList.remove('dragover'));
+    box.addEventListener('drop', e => {
+      e.preventDefault();
+      box.classList.remove('dragover');
+      const file = e.dataTransfer.files[0];
+      if (!file) return;
+      const input = document.getElementById(`file-${side}`);
+      const dt = new DataTransfer();
+      dt.items.add(file);
+      input.files = dt.files;
+      onFileSelected(side, input);
+    });
+  });
+
+  // ── API calls ─────────────────────────────────────────────────────────────
+  async function runUpload() {
+    const orig = document.getElementById('file-orig').files[0];
+    const rev  = document.getElementById('file-rev').files[0];
+    const form = new FormData();
+    form.append('original_file', orig);
+    form.append('revised_file', rev);
+    showLoading();
+    try {
+      const res = await fetch(`${API}/api/v1/contracts/compare`, { method: 'POST', body: form });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.detail || '比對失敗');
+      renderResults(data);
+    } catch(e) { showError(e.message); }
+  }
+
+  async function runExample(id) {
+    showLoading();
+    try {
+      const res = await fetch(`${API}/api/v1/contracts/compare/example/${id}`);
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.detail || '比對失敗');
+      renderResults(data);
+    } catch(e) { showError(e.message); }
+  }
+
+  // ── UI helpers ────────────────────────────────────────────────────────────
+  let _stageTimer = null;
+
+  function showLoading() {
+    document.getElementById('loading').style.display = 'block';
+    document.getElementById('results').style.display = 'none';
+    document.getElementById('error-box').style.display = 'none';
+    if (_stageTimer) { clearTimeout(_stageTimer); _stageTimer = null; }
+    // reset
+    [1,2,3,4].forEach(i => {
+      document.getElementById(`stage-${i}`).className = 'stage-step';
+      const ln = document.getElementById(`line-${i}`);
+      if (ln) ln.className = 'step-line';
+    });
+    let cur = 1;
+    const tick = () => {
+      if (cur > 1) {
+        document.getElementById(`stage-${cur-1}`).className = 'stage-step done';
+        const ln = document.getElementById(`line-${cur-1}`);
+        if (ln) ln.className = 'step-line done';
+      }
+      document.getElementById(`stage-${cur}`).className = 'stage-step active';
+      if (cur < 4) {
+        cur++;
+        _stageTimer = setTimeout(tick, 950);
+      }
+      // stage 4: stay active (pulsing) until API responds
+    };
+    _stageTimer = setTimeout(tick, 400);
+  }
+
+  function stopLoadingAnimation() {
+    if (_stageTimer) { clearTimeout(_stageTimer); _stageTimer = null; }
+    [1,2,3,4].forEach(i => {
+      document.getElementById(`stage-${i}`).className = 'stage-step done';
+      const ln = document.getElementById(`line-${i}`);
+      if (ln) ln.className = 'step-line done';
+    });
+  }
+
+  function showError(msg) {
+    stopLoadingAnimation();
+    document.getElementById('loading').style.display = 'none';
+    const box = document.getElementById('error-box');
+    box.innerHTML = '<span aria-hidden="true">⚠</span> ' + escHtml(msg) + '（請確認後端服務已啟動：uvicorn src.api.main:app --port 8000）';
+    box.style.display = 'block';
+  }
+
+  const LEVEL_EMOJI = { high: '🔴', medium: '🟡', low: '🟢', none: '⚪' };
+  const LEVEL_ZH    = { high: '高風險', medium: '中風險', low: '低風險', none: '無風險' };
+  const RISK_CLASS  = { high: 'risk-high', medium: 'risk-medium', low: 'risk-low' };
+  const VERDICT_CLASS = { high: 'verdict-high', medium: 'verdict-medium', low: 'verdict-low', none: 'verdict-none' };
+
+  let _changes = [];
+
+  function renderResults(d) {
+    stopLoadingAnimation();
+    document.getElementById('loading').style.display = 'none';
+    document.getElementById('results').style.display = 'block';
+
+    // reset per-report state from any previous comparison
+    document.getElementById('qa-log').innerHTML = '';
+    document.getElementById('ask-input').value = '';
+    document.getElementById('matrix-area').innerHTML = '';
+    const matrixBtn = document.getElementById('matrix-btn');
+    matrixBtn.disabled = false;
+    matrixBtn.textContent = '📋 匯出協商矩陣（高風險條款）';
+
+    // Coverage Guard check
+    let coverageHtml = '';
+    if (d.coverage_guard) {
+      const cg = d.coverage_guard;
+      const origRatio = (cg.original_parser_ratio * 100).toFixed(1);
+      const revRatio = (cg.revised_parser_ratio * 100).toFixed(1);
+      const threshold = 97;
+      const ok = cg.parser_coverage_ok;
+      if (!ok) {
+        coverageHtml = `
+          <div style="background:var(--red-light);border-left:4px solid var(--red);padding:12px 16px;border-radius:var(--radius);margin-bottom:14px;font-size:13px;color:var(--red);">
+            <strong>⚠ 文字覆蓋率警告</strong><br>
+            原始文件覆蓋率 ${origRatio}% | 修訂文件覆蓋率 ${revRatio}% (閾值: ${threshold}%)
+            ${cg.missing_fragments.length ? `<br>無法解析片段: ${cg.missing_fragments.slice(0,3).join(' | ')}${cg.missing_fragments.length > 3 ? '...' : ''}` : ''}
+            <br><span style="font-size:12px;opacity:.8;">建議人工複核原始檔案確保未遺漏任何內容。</span>
+          </div>
+        `;
+      } else {
+        coverageHtml = `
+          <div style="background:var(--green-light);border-left:4px solid var(--green);padding:10px 14px;border-radius:var(--radius);margin-bottom:12px;font-size:12px;color:var(--green);">
+            ✓ 文字守恆檢查：原始 ${origRatio}% | 修訂 ${revRatio}% (閾值 ${threshold}%)
+          </div>
+        `;
+      }
+    }
+    document.getElementById('coverage-guard-alert').innerHTML = coverageHtml;
+
+    // meta
+    const modeLabel = d.summary_mode === 'claude_api'
+      ? '<span class="mode-badge">Claude AI</span>'
+      : d.summary_mode === 'gemini_api'
+      ? '<span class="mode-badge">Gemini AI</span>'
+      : '<span class="mode-badge">範本模式</span>';
+    document.getElementById('result-meta').innerHTML =
+      `原始：<strong>${d.original_filename}</strong> &nbsp;→&nbsp; 修訂：<strong>${d.revised_filename}</strong>
+       &nbsp;｜&nbsp; ${d.compare_date} &nbsp;｜&nbsp; ${modeLabel}`;
+    document.getElementById('result-time-badge').textContent = `⚡ ${d.processing_time_ms}ms`;
+
+    // verdict
+    const vEl = document.getElementById('result-verdict');
+    const vEmoji = LEVEL_EMOJI[d.overall_risk_level] || '';
+    const vZh    = LEVEL_ZH[d.overall_risk_level] || '';
+    const vClass = VERDICT_CLASS[d.overall_risk_level] || 'verdict-none';
+    const vDetail = {
+      high:   '建議協商後再簽署，高風險條款須逐項確認',
+      medium: '部分條款需注意，建議與法務確認後簽署',
+      low:    '整體風險可接受，建議仍由法務複閱一次',
+      none:   '未偵測到顯著風險條款'
+    }[d.overall_risk_level] || '';
+    vEl.className = `verdict ${vClass}`;
+    vEl.innerHTML = `
+      <span class="verdict-icon" aria-hidden="true">${vEmoji}</span>
+      <div>
+        <div>整體評估：${vZh}</div>
+        <div class="verdict-detail">${vDetail}</div>
+      </div>`;
+
+    // stats
+    document.getElementById('result-stats').innerHTML = `
+      <div class="stat-box stat-blue"><div class="num">${d.total_changes}</div><div class="lbl">總變動條款</div></div>
+      <div class="stat-box stat-red"><div class="num">${d.high_risk_count}</div><div class="lbl">高風險</div></div>
+      <div class="stat-box stat-yellow"><div class="num">${d.medium_risk_count}</div><div class="lbl">中風險</div></div>
+      <div class="stat-box"><div class="num">${d.low_risk_count}</div><div class="lbl">低風險</div></div>
+    `;
+
+    // key changes
+    const changesEl = document.getElementById('result-changes');
+    if (!d.key_changes.length) {
+      changesEl.innerHTML = '<p style="color:var(--ink-light);font-size:13px;">未偵測到顯著風險條款。</p>';
+    } else {
+      const isNum = s => /^[\d一二三四五六七八九十\.]+$/.test(s);
+      const fmtClause = s => isNum(s) ? `第 ${escHtml(s)} 條` : escHtml(s);
+      _changes = d.key_changes;
+      changesEl.innerHTML = d.key_changes.map((c, i) => `
+        <div class="change-item change-item-${c.risk_level}">
+          <button type="button" class="change-header" onclick="toggleChange(${i})" aria-expanded="false" id="chev-btn-${i}">
+            <div class="change-rank" aria-hidden="true">${c.rank}</div>
+            <span class="risk-badge ${RISK_CLASS[c.risk_level] || ''}" aria-hidden="true">${LEVEL_ZH[c.risk_level]}</span>
+            <span class="change-title">${escHtml(c.risk_name)}</span>
+            <span class="change-clause">${fmtClause(c.clause_id)}</span>
+            ${c.mas_status === 'confirmed' ? '<span class="mas-badge mas-confirmed">✓ 雙重驗證</span>' : ''}
+            ${c.mas_status === 'pending'   ? '<span class="mas-badge mas-pending">⚠ 待確認</span>'   : ''}
+            <span class="chevron" id="chev-${i}" aria-hidden="true">▼</span>
+          </button>
+          <div class="change-body" id="body-${i}">
+            <div class="field-label">說明</div>
+            <div>${escHtml(c.plain_summary)}</div>
+            <div class="field-label">商業影響</div>
+            <div>${escHtml(c.business_impact)}</div>
+            ${c.legal_basis ? `
+            <div class="field-label" style="margin-top:14px;">⚖ 法律依據</div>
+            <div style="color:var(--ink-light);font-size:13px;">${escHtml(c.legal_basis)}</div>` : ''}
+            ${(c.legal_citation_raw || c.precedent_raw) ? `
+            <div class="field-label" style="margin-top:10px;">🔎 Layer 4 原始檢索資料</div>
+            ${c.legal_citation_raw ? `
+            <div class="source-block source-mcp">
+              <div class="source-label">🏛 MCP 法條快取（law.moj.gov.tw）</div>
+              <div>${escHtml(c.legal_citation_raw)}</div>
+            </div>` : ''}
+            ${c.precedent_raw ? `
+            <div class="source-block source-vector">
+              <div class="source-label">📚 向量檢索先例（gemini-embedding-2 cosine similarity）</div>
+              <div>${escHtml(c.precedent_raw)}</div>
+            </div>` : ''}` : ''}
+            ${c.mas_status === 'pending' ? `
+            <div class="field-label" style="margin-top:14px;">雙重驗證意見分歧</div>
+            <div class="mas-views">
+              <div class="mas-view-row">
+                <div class="mas-view-half mas-view-a">
+                  <div class="mas-view-label">🔴 嚴格審查</div>
+                  <div>${escHtml(c.mas_agent_a_view)}</div>
+                </div>
+                <div class="mas-view-half mas-view-b">
+                  <div class="mas-view-label">🟡 平衡審查</div>
+                  <div>${escHtml(c.mas_agent_b_view)}</div>
+                </div>
+              </div>
+            </div>` : ''}
+            <div class="field-label">
+              三層協商對策
+              <button class="negotiate-btn" id="neg-btn-${i}" onclick="loadNegotiate(${i})">📋 生成對策</button>
+            </div>
+            <div class="playbook-result" id="neg-${i}"></div>
+            <div class="field-label" style="margin-top:18px;">
+              原文對照
+              <button class="diff-toggle" id="diff-btn-${i}" onclick="toggleDiff(${i})">▶ 查看</button>
+            </div>
+            <div class="diff-block" id="diff-${i}">
+              ${buildAttrBadge(c.change_type)}
+              <div class="diff-half diff-original">${c.old_text ? escHtml(c.old_text) : '<span class="diff-empty">（乙方新增，原版本無此條款）</span>'}</div>
+              <div class="diff-half diff-revised">${c.new_text ? escHtml(c.new_text) : '<span class="diff-empty">（乙方刪除，修訂版本已移除）</span>'}</div>
+            </div>
+          </div>
+        </div>
+      `).join('');
+      d.key_changes.forEach((c, i) => { if (c.risk_level === 'high') toggleChange(i); });
+    }
+
+    // review advice
+    const advEl = document.getElementById('result-advice');
+    let advHtml = '';
+    if (d.review_advice.must_negotiate.length) {
+      advHtml += `<div class="advice-chip chip-must"><span aria-hidden="true">🔴</span> 必須協商：第 ${d.review_advice.must_negotiate.join('、')} 條</div>`;
+    }
+    if (d.review_advice.suggested_negotiate.length) {
+      advHtml += `<div class="advice-chip chip-suggest"><span aria-hidden="true">🟡</span> 建議協商：第 ${d.review_advice.suggested_negotiate.join('、')} 條</div>`;
+    }
+    if (d.review_advice.acceptable_count > 0) {
+      advHtml += `<div class="advice-chip chip-ok"><span aria-hidden="true">🟢</span> 可接受：其他 ${d.review_advice.acceptable_count} 處行政性變更</div>`;
+    }
+    advEl.innerHTML = advHtml || '<span style="color:var(--ink-light);font-size:13px;">無需特別協商。</span>';
+
+    // risk flags table
+    document.getElementById('result-flags').innerHTML = d.all_risk_flags.map(f => `
+      <tr>
+        <td>${escHtml(f.clause_id)}</td>
+        <td><span class="risk-badge ${RISK_CLASS[f.risk_level] || ''}"><span aria-hidden="true">${LEVEL_EMOJI[f.risk_level]}</span> ${LEVEL_ZH[f.risk_level]}</span></td>
+        <td>${f.source === 'verification_agent' ? '<span aria-hidden="true">⚠</span> Agent 補漏' : '<span aria-hidden="true">✓</span> 規則引擎'}</td>
+        <td>${escHtml(f.risk_name)}</td>
+        <td style="color:var(--ink-light)">${escHtml(f.trigger_reason)}</td>
+      </tr>
+    `).join('');
+
+    // download markdown
+    const blob = new Blob([d.markdown_report], { type: 'text/markdown' });
+    const url  = URL.createObjectURL(blob);
+    const dl   = document.getElementById('btn-download');
+    dl.href = url;
+    dl.download = `contract_report_${d.compare_date}.md`;
+
+    const resultsEl = document.getElementById('results');
+    resultsEl.focus();
+    window.scrollTo({ top: resultsEl.offsetTop - 20, behavior: 'smooth' });
+  }
+
+  function toggleHero(i) {
+    const btn    = document.getElementById(`hero-btn-${i}`);
+    const detail = document.getElementById(`hero-detail-${i}`);
+    const isOpen = detail.classList.toggle('open');
+    btn.classList.toggle('active', isOpen);
+    btn.setAttribute('aria-expanded', isOpen ? 'true' : 'false');
+    // close others
+    [0,1,2].filter(j => j !== i).forEach(j => {
+      document.getElementById(`hero-detail-${j}`).classList.remove('open');
+      document.getElementById(`hero-btn-${j}`).classList.remove('active');
+      document.getElementById(`hero-btn-${j}`).setAttribute('aria-expanded', 'false');
+    });
+  }
+
+  function toggleChange(i) {
+    const body = document.getElementById(`body-${i}`);
+    const chev = document.getElementById(`chev-${i}`);
+    const btn  = document.getElementById(`chev-btn-${i}`);
+    const isOpen = body.classList.toggle('open');
+    chev.classList.toggle('open');
+    if (btn) btn.setAttribute('aria-expanded', isOpen ? 'true' : 'false');
+  }
+
+  function buildAttrBadge(changeType) {
+    const map = {
+      inserted: { cls: 'attr-inserted', icon: '⊕', label: '乙方新增條款' },
+      deleted:  { cls: 'attr-deleted',  icon: '⊖', label: '乙方刪除甲方條款' },
+      modified: { cls: 'attr-modified', icon: '✎', label: '乙方修改條款' },
+    };
+    const m = map[changeType];
+    if (!m) return '';
+    return `<div class="attr-badge ${m.cls}">${m.icon} ${m.label}</div>`;
+  }
+
+  function toggleDiff(i) {
+    const block = document.getElementById(`diff-${i}`);
+    const btn   = document.getElementById(`diff-btn-${i}`);
+    const isOpen = block.classList.toggle('open');
+    btn.classList.toggle('open', isOpen);
+    btn.textContent = isOpen ? '▼ 收合' : '▶ 查看';
+  }
+
+  async function loadNegotiate(i) {
+    const c   = _changes[i];
+    const btn = document.getElementById(`neg-btn-${i}`);
+    const box = document.getElementById(`neg-${i}`);
+
+    btn.disabled = true;
+    btn.textContent = '⏳ 分析中…';
+
+    try {
+      const res = await fetch(`${API}/api/v1/contracts/negotiate`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          clause_id:   c.clause_id,
+          risk_code:   c.risk_code,
+          risk_name:   c.risk_name,
+          old_text:    c.old_text  || '',
+          new_text:    c.new_text  || '',
+          change_type: c.change_type || '',
+        }),
+      });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const data = await res.json();
+      const p = data.playbook;
+
+      box.innerHTML = `
+        <div class="tier-block tier-green">
+          <div class="tier-label">🟢 首選立場（Tier 1）</div>
+          <div>${escHtml(p.tier1)}</div>
+          ${p.tier1_clause ? `<div class="tier-clause">${escHtml(p.tier1_clause)}</div>` : ''}
+        </div>
+        <div class="tier-block tier-yellow">
+          <div class="tier-label">🟡 可接受妥協（Tier 2）</div>
+          <div>${escHtml(p.tier2)}</div>
+          ${p.tier2_clause ? `<div class="tier-clause">${escHtml(p.tier2_clause)}</div>` : ''}
+        </div>
+        <div class="tier-block tier-red">
+          <div class="tier-label">🔴 絕對底線（Red Line）</div>
+          <div>${escHtml(p.redline)}</div>
+        </div>
+      `;
+      box.classList.add('visible');
+      btn.textContent = '✓ 已生成';
+    } catch (e) {
+      btn.disabled = false;
+      btn.textContent = '⚠ 重試';
+      box.innerHTML = `<div style="color:var(--red);font-size:12px;padding:6px 0;">載入失敗：${escHtml(String(e))}</div>`;
+      box.classList.add('visible');
+    }
+  }
+
+  // ── Report Q&A ────────────────────────────────────────────────────────────
+  async function askQuestion() {
+    const input = document.getElementById('ask-input');
+    const question = input.value.trim();
+    if (!question) return;
+
+    const submitBtn = document.getElementById('ask-submit');
+    const log = document.getElementById('qa-log');
+    submitBtn.disabled = true;
+    input.disabled = true;
+
+    const pairId = `qa-${Date.now()}`;
+    log.insertAdjacentHTML('beforeend', `
+      <div class="qa-pair" id="${pairId}">
+        <div class="qa-question">${escHtml(question)}</div>
+        <div class="qa-answer ungrounded"><span class="qa-tag">⋯ 查詢中</span></div>
+      </div>
+    `);
+    input.value = '';
+
+    try {
+      const res = await fetch(`${API}/api/v1/contracts/ask`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ key_changes: _changes, question }),
+      });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const data = await res.json();
+      const pair = document.getElementById(pairId);
+      const tag = data.grounded ? '✓ 有依據' : '— 查無相關資訊';
+      pair.querySelector('.qa-answer').className = `qa-answer ${data.grounded ? 'grounded' : 'ungrounded'}`;
+      pair.querySelector('.qa-answer').innerHTML = `<span class="qa-tag">${tag}</span><div>${escHtmlMd(data.answer)}</div>`;
+    } catch (e) {
+      const pair = document.getElementById(pairId);
+      pair.querySelector('.qa-answer').innerHTML = `<span class="qa-tag">⚠ 錯誤</span><div>查詢失敗：${escHtml(String(e))}</div>`;
+    } finally {
+      submitBtn.disabled = false;
+      input.disabled = false;
+      input.focus();
+    }
+  }
+
+  // ── Negotiation matrix ───────────────────────────────────────────────────
+  async function exportMatrix() {
+    const btn = document.getElementById('matrix-btn');
+    const area = document.getElementById('matrix-area');
+    const highRisk = _changes.filter(c => c.risk_level === 'high');
+
+    if (!highRisk.length) {
+      area.innerHTML = '<div class="matrix-empty">這份報告沒有高風險條款，無需生成協商矩陣。</div>';
+      return;
+    }
+
+    btn.disabled = true;
+    btn.textContent = '⏳ 生成中…（逐條款生成三層對策，需要一些時間）';
+
+    try {
+      const res = await fetch(`${API}/api/v1/contracts/negotiate/matrix`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ key_changes: highRisk }),
+      });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const data = await res.json();
+
+      const rows = data.rows.map(r => `
+        <tr class="risk-${r.risk_level}">
+          <td>${escHtml(r.clause_id)}</td>
+          <td>${escHtml(r.counterparty_ask)}</td>
+          <td>${escHtml(r.our_position)}</td>
+          <td>${escHtml(r.compromise)}</td>
+          <td>${escHtml(r.redline)}</td>
+          <td class="matrix-legal">${r.legal_basis ? escHtml(r.legal_basis) : '—'}</td>
+        </tr>
+      `).join('');
+
+      area.innerHTML = `
+        <div id="matrix-print-area">
+          <table class="matrix-table">
+            <thead>
+              <tr>
+                <th>條款</th><th>對方訴求</th><th>我方政策</th><th>建議折衷方案</th><th>底線</th><th>法律依據</th>
+              </tr>
+            </thead>
+            <tbody>${rows}</tbody>
+          </table>
+        </div>
+        <div style="text-align:right;margin-top:10px;">
+          <button class="btn-dl" onclick="window.print()">🖨 列印 / 存成 PDF</button>
+        </div>
+      `;
+      btn.textContent = '✓ 已生成';
+    } catch (e) {
+      btn.disabled = false;
+      btn.textContent = '⚠ 重試';
+      area.innerHTML = `<div style="color:var(--red);font-size:12px;padding:6px 0;">生成失敗：${escHtml(String(e))}</div>`;
+    }
+  }
+
+  function escHtml(str) {
+    if (!str) return '';
+    return String(str)
+      .replace(/&/g,'&amp;').replace(/</g,'&lt;')
+      .replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+  }
+
+  // LLM answers sometimes use markdown-style **bold** even when asked for
+  // plain text. escHtml() runs first so this only ever reintroduces literal
+  // <strong> tags around already-escaped content — not an injection vector.
+  function escHtmlMd(str) {
+    return escHtml(str).replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
+  }
+</script>
+</body>
+</html>

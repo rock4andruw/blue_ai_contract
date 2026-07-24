@@ -1,0 +1,91 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(ls*)",
+      "Bash(pwd)",
+      "Bash(cat*)",
+      "Bash(head*)",
+      "Bash(tail*)",
+      "Bash(grep*)",
+      "Bash(egrep*)",
+      "Bash(rg*)",
+      "Bash(find*)",
+      "Bash(wc*)",
+      "Bash(tree*)",
+      "Bash(file*)",
+      "Bash(stat*)",
+      "Bash(echo*)",
+      "Bash(which*)",
+      "Bash(sort*)",
+      "Bash(uniq*)",
+      "Bash(diff*)",
+      "Bash(basename*)",
+      "Bash(dirname*)",
+      "Bash(realpath*)",
+      "Bash(mkdir*)",
+      "Bash(touch*)",
+      "Bash(cp*)",
+      "Bash(mv*)",
+      "Bash(rmdir*)",
+      "Bash(python3*)",
+      "Bash(python*)",
+      "Bash(pytest*)",
+      "Bash(node*)",
+      "Bash(npm run*)",
+      "Bash(npm test*)",
+      "Bash(git status*)",
+      "Bash(git diff*)",
+      "Bash(git add*)",
+      "Bash(git log*)",
+      "Bash(git show*)",
+      "Bash(git branch*)",
+      "Bash(git stash*)",
+      "Bash(git checkout*)",
+      "Bash(git restore*)",
+      "Bash(git commit*)"
+    ],
+    "deny": [
+      "Read(.env)",
+      "Edit(.env)",
+      "Write(.env)",
+      "Read(.env.local)",
+      "Edit(.env.local)",
+      "Write(.env.local)",
+      "Read(.env.*.local)",
+      "Edit(.env.*.local)",
+      "Write(.env.*.local)",
+      "Read(.env.production)",
+      "Edit(.env.production)",
+      "Write(.env.production)",
+      "Read(.env.development)",
+      "Edit(.env.development)",
+      "Write(.env.development)",
+      "Read(.env.staging)",
+      "Edit(.env.staging)",
+      "Write(.env.staging)",
+      "Read(pic_contract/**)",
+      "Edit(pic_contract/**)",
+      "Write(pic_contract/**)",
+      "Read(nda_contract/**)",
+      "Edit(nda_contract/**)",
+      "Write(nda_contract/**)",
+      "Read(sla_contract/**)",
+      "Edit(sla_contract/**)",
+      "Write(sla_contract/**)",
+      "Write(.claude/skills/*/**)"
+    ]
+  },
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 \"$CLAUDE_PROJECT_DIR/.claude/hooks/guard_sensitive.py\""
+          }
+        ]
+      }
+    ]
+  }
+}
