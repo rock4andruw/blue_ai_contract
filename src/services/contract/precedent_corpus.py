@@ -1,4 +1,4 @@
-"""Precedent case corpus for Layer 4 negotiation grounding.
+"""Precedent case corpus for Layer 3 negotiation grounding.
 
 Synthetic "we've reviewed a case like this before" entries, hand-written to
 mirror the exact risk patterns in our own v2-v6 Demo examples (not generic

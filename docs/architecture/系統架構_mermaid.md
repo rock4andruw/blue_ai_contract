@@ -41,7 +41,7 @@ subgraph P1["🟢 Phase 1 — MVP（已完成）"]
         PARSER --> ALIGN --> DIFF --> RISK --> VA --> LLM --> RPT
     end
 
-    subgraph L4["⚖️ Layer 4：協商建議依據檢索（已接入，2026-07-02）"]
+    subgraph L4["⚖️ Layer 3：協商建議依據檢索（已接入，2026-07-02）"]
         direction LR
         LAWCACHE["📖 legal_citations_cache.json\nmcp-taiwan-legal-db 離線查回\n真實民法／民訴法條文\n同步讀檔，無即時網路依賴"]
         PRECEDENT["🧭 precedent_corpus.py\n10 筆合成先例（緊扣 v2-v6）\ngemini-embedding-2 真實向量\n本地 cosine similarity"]
@@ -80,7 +80,7 @@ subgraph EXT["☁️ 外部服務（External Cloud）"]
     AZURE["🔷 Azure\nBlob Storage · AD 認證\nApp Insights 監控"]
 end
 
-subgraph P2["🔵 Phase 2 — 能力擴展（3–6 月，Layer 4 已提前完成，其餘未做）"]
+subgraph P2["🔵 Phase 2 — 能力擴展（3–6 月，Layer 3 已提前完成，其餘未做）"]
     direction LR
     subgraph P2L["MCP 整合（未做）"]
         O365["📧 Office 365 MCP\nTeams 通知\nSharePoint 歸檔"]

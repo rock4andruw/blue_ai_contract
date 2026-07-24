@@ -590,7 +590,7 @@
     .mas-view-a { background: #FEF7F0; }
     .mas-view-b { background: #F0F7FE; }
 
-    /* Layer 4 raw source provenance (MCP legal cache / vector precedent corpus) */
+    /* Layer 3 raw source provenance (MCP legal cache / vector precedent corpus) */
     .source-block {
       margin-top: 8px;
       padding: 10px 12px;
@@ -1270,7 +1270,7 @@
             <div class="field-label" style="margin-top:14px;">⚖ 法律依據</div>
             <div style="color:var(--ink-light);font-size:13px;">${escHtml(c.legal_basis)}</div>` : ''}
             ${(c.legal_citation_raw || c.precedent_raw) ? `
-            <div class="field-label" style="margin-top:10px;">🔎 Layer 4 原始檢索資料</div>
+            <div class="field-label" style="margin-top:10px;">🔎 Layer 3 原始檢索資料</div>
             ${c.legal_citation_raw ? `
             <div class="source-block source-mcp">
               <div class="source-label">🏛 MCP 法條快取（law.moj.gov.tw）</div>

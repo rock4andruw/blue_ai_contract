@@ -259,7 +259,7 @@ open frontend/demo.html
 | 16-18 分 | 技術亮點            | **100% High-risk recall**（競品無此指標）+ **Verification Agent 15 秒故事**：真實合約裡「千分之一」這種中文寫法，Regex 完全看不懂、整條消失，LLM 語意層補上並講出「降低 66.7%」精確數字——Rule Engine 決定風險／LLM 只負責解釋（防幻覺設計） |
 | 18-20 分 | 商機                | 填補台灣本地研究缺口 + 內部 ROI + 外部 SaaS 潛力                                                     |
 
-> **簡報收斂原則**：技術亮點只講一個記得住的故事（千分之一），不逐項報告涵蓋率修復、交叉核對邏輯、CLM 定位、Layer 4 落地細節——這些只在評審主動追問時才拿出來當備援彈藥，不排進主要流程，避免資訊過載稀釋重點。Layer 4（法條 + 先例檢索）雖然已經真的接進系統在跑，仍建議保留在備援彈藥而非主線——真正該講的是「千分之一」這一個故事，Layer 4 是「你追問我就秀給你看」的加分項，不是主打內容。
+> **簡報收斂原則**：技術亮點只講一個記得住的故事（千分之一），不逐項報告涵蓋率修復、交叉核對邏輯、CLM 定位、Layer 3 落地細節——這些只在評審主動追問時才拿出來當備援彈藥，不排進主要流程，避免資訊過載稀釋重點。Layer 3（法條 + 先例檢索）雖然已經真的接進系統在跑，仍建議保留在備援彈藥而非主線——真正該講的是「千分之一」這一個故事，Layer 3 是「你追問我就秀給你看」的加分項，不是主打內容。
 
 ---
 
@@ -269,7 +269,7 @@ open frontend/demo.html
 
 - 支援 **NDA、採購合約**類型
 - **合約範本 Playbook 管理**：企業上傳己方標準合約作為基準範本，系統自動以此為基準比對對方版本，標記所有偏差——範本邏輯反向設計，確保 AI 輸出符合公司既有商業立場，不憑空生成
-- **✅ Layer 4 法律依據檢索（RAG）已完成基礎版（2026-07-02）**：接在協商建議生成之前，補上系統原本的缺口——協商對策不再是 LLM 憑空生成。已用 `mcp-taiwan-legal-db`（真實查詢 law.moj.gov.tw）離線建立法條快取，涵蓋責任上限、保護條款、不可抗力、管轄法院四類；並用 `gemini-embedding-2` 對 10 筆合成先例案例做真實向量檢索（本地 cosine similarity，非關鍵字比對）。實測協商建議已能正確引用「民法第216條」等真實條文。**短期優化方向**：擴充法條快取涵蓋更多風險類別、擴充先例語料庫筆數、改用真實 PostgreSQL + pgvector 取代目前本地 JSON 檔案方案
+- **✅ Layer 3 法律依據檢索（RAG）已完成基礎版（2026-07-02）**：接在協商建議生成之前，補上系統原本的缺口——協商對策不再是 LLM 憑空生成。已用 `mcp-taiwan-legal-db`（真實查詢 law.moj.gov.tw）離線建立法條快取，涵蓋責任上限、保護條款、不可抗力、管轄法院四類；並用 `gemini-embedding-2` 對 10 筆合成先例案例做真實向量檢索（本地 cosine similarity，非關鍵字比對）。實測協商建議已能正確引用「民法第216條」等真實條文。**短期優化方向**：擴充法條快取涵蓋更多風險類別、擴充先例語料庫筆數、改用真實 PostgreSQL + pgvector 取代目前本地 JSON 檔案方案
 - 整合 **Microsoft Teams**：比對完成後自動通知責任人、SharePoint 自動歸檔
 
 ### 中期（6 個月內）
@@ -307,7 +307,7 @@ open frontend/demo.html
 | LLM      | Gemini 3.1 Flash Lite（主）/ Claude Sonnet 4.6 或 Haiku 4.5（備，依任務複雜度） | 速度快、成本低；繁中效果佳；Verification Agent 等簡查任務用較便宜的 Haiku |
 | 文件解析 | pdfplumber + python-docx + HTML stripper             | 文字版 PDF/DOCX/MD，自動清理追蹤修改標記 |
 | 後端     | FastAPI (Python 3.11+)                               | 輕量，與 Claude API 整合快               |
-| 向量檢索（✅ 已實作基礎版） | `gemini-embedding-2` + 本地 JSON + cosine similarity | 不架 PostgreSQL 也能做真實語意檢索；Layer 4 相似案例檢索，為協商建議補上先例依據。真實 pgvector 為後續優化方向（見「六、未來展望」） |
+| 向量檢索（✅ 已實作基礎版） | `gemini-embedding-2` + 本地 JSON + cosine similarity | 不架 PostgreSQL 也能做真實語意檢索；Layer 3 相似案例檢索，為協商建議補上先例依據。真實 pgvector 為後續優化方向（見「六、未來展望」） |
 | 法規查詢（✅ 已實作離線快取） | `mcp-taiwan-legal-db`（MIT，免 API key） | 真實查詢法務部全國法規資料庫，離線建置快取、Demo 執行時同步讀檔，無即時網路依賴 |
 | 認證     | Azure AD（現有）                                     | 沿用公司既有系統                         |
 | 部署     | Azure VM                                             | 合約資料留在企業內網                     |

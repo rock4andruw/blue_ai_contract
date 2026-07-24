@@ -153,11 +153,11 @@ def analyze_flag(flag: RiskFlag, reference_clause: str = "", api_key: Optional[s
     gemini_key = os.environ.get("GEMINI_API_KEY", "")
     claude_key = api_key or os.environ.get("ANTHROPIC_API_KEY", "")
 
-    # Layer 4 grounding: synchronous cache lookup (legal citation) + a single
+    # Layer 3 grounding: synchronous cache lookup (legal citation) + a single
     # embedding call (precedent similarity) — neither blocks on a live MCP
     # subprocess or PostgreSQL. Best-effort: missing/failed lookups just
     # mean an ungrounded (but still valid) negotiation suggestion, same as
-    # before Layer 4 existed.
+    # before Layer 3 existed.
     legal_citation = _get_legal_citation(flag.risk_code, flag.trigger_reason)
     precedent = None
     if gemini_key:
@@ -179,7 +179,7 @@ def analyze_flag(flag: RiskFlag, reference_clause: str = "", api_key: Optional[s
         section = _analyze_with_template(flag)
 
     # Attach the raw retrieved sources regardless of which branch produced the
-    # section, so the UI can show "what Layer 4 actually found" independent
+    # section, so the UI can show "what Layer 3 actually found" independent
     # of how the LLM chose to word legal_basis (or whether it wrote one at all).
     section.legal_citation_raw = legal_citation
     section.precedent_raw = precedent_display

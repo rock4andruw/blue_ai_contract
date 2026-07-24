@@ -34,7 +34,7 @@
 - [x] **Verification Agent 實作（`verifier.py`）**：接入 orchestrator.py Step 4b，Layer 1 規則引擎 + Layer 2 LLM 語意補漏交叉核對（Case A/B/C），並新增候選規則紀錄 `candidate_rules.jsonl`（Case C 補漏累積分類，供未來人工升級為正式規則，不自動生成規則）
 - [x] **Diff Engine 涵蓋率修復**：發現並修復純新增/刪除條款因缺條號被靜默丟棄的漏洞（採購合約原本 138 段完全消失，現已全數進入 diffs）
 - [x] **Risk Engine 數字/格式修復**：中文分數（千分之一/百分之/萬分之）、全形／半形 % 符號、費率與上限百分比互相干擾、回應/到場/修復三時限互相干擾（含修復過程中自己引入又抓到的假警報）
-- [x] **Layer 4 落地（2026-07-02）**：法條依據 + 相似先例真的接進協商建議生成，不再只是路線圖：
+- [x] **Layer 3 落地（2026-07-02）**：法條依據 + 相似先例真的接進協商建議生成，不再只是路線圖：
   - `legal_citations_cache.json`：用 `mcp-taiwan-legal-db` 真實查回 4 類風險對應的民法/民事訴訟法條文（責任上限、保護條款、不可抗力、管轄法院），離線快取、Demo 執行時純同步讀檔，無即時網路依賴
   - `precedent_corpus.py` + `precedent_corpus.json`：10 筆手寫合成先例案例（緊扣 v2-v6 demo 涵蓋的風險類型），用 `gemini-embedding-2`（3072 維）算真實向量，本地 cosine similarity 檢索，不是關鍵字比對、也不用架 PostgreSQL
   - `llm_service.py`：`_build_user_prompt()` 新增「檢索到的法條」「相似先例」區塊；System Prompt 明確規定「只能引用提供的法條原文，不可自行編造」防止 RAG 反而誘發幻覺；`ReportSection`/API/前端新增 `legal_basis` 欄位，有依據才顯示（比照「來源」欄的誠實揭露邏輯）
@@ -45,7 +45,7 @@
   - ✅ **`llm_service.py`（第 1 個，已完成）**：發現 `negotiation-strategy.md` 裡早就有一段「## 各風險類型的協商框架」（最佳/折衷/底線，涵蓋 5 類風險），但從沒被任何程式碼讀取過——三份重複但互相獨立的協商知識（這段 + `STATIC_PLAYBOOK` + `llm_service.py` 樣板）之一。已改用跟 `verifier.py` 一樣的 `_load_skill_section()` 模式載入進 `SYSTEM_PROMPT`。效果實測（v2，SLA可用率降低，正好落在框架涵蓋範圍）：協商對策從泛用建議變成精準對應框架的具體數字（「折讓比例從 5% 提高至 15%」直接對應框架寫的數字，不是 LLM 自己掰的）。3 份真實合約 + v2 + v6 回歸測試皆正常。
   - ✅ **`negotiate_service.py`（第 2 個，已完成）**：`STATIC_PLAYBOOK`（13 類風險 × tier1/tier1_clause/tier2/tier2_clause/redline，含精確替換條款文字）是結構化資料，跟前一個純散文 case 不同，不能直接套 `_load_skill_section()` 整段字串塞進 prompt。做法：在 `negotiation-strategy.md` 新增「## 三層協商 Playbook（各風險類型標準立場）」區塊，用 `### RISK_CODE` + `- 欄位：內容`（單行）格式列出全部 13 類風險的 5 個欄位；`negotiate_service.py` 新增 `_parse_playbook_skill()` 解析回原本的 dict 結構，並用 `_validate_playbook()` 驗證（risk_code 集合、每筆的 5 個欄位都要齊全）——驗證失敗（法務編輯格式錯誤、缺欄位）就自動退回程式內建的 `_FALLBACK_PLAYBOOK`，記 warning log，不會讓 Demo 當掉。測試：(1) 解析結果與原始 Python dict 逐欄位比對，13 類風險、5 欄位、0 個不符；(2) 模擬缺欄位/空白輸入，正確觸發 fallback；(3) 全部 13 類風險 + 未知 risk_code 呼叫 `generate_playbook()`皆正常無例外；(4) 起 API server 實測 `/api/v1/contracts/compare/example/v6`（rule engine + Verification Agent + 法律依據皆正常）與 `/api/v1/contracts/negotiate`（LLM 精煉版輸出正確反映 skill.md 載入的 12個月/6個月/3個月結構與故意重大過失例外條款，非 LLM 憑空生成）。至此 4 個 LLM 角色（Agent A/B、Verification Agent、llm_service、negotiate_service）全數走 `.claude/skills/*.md` 動態載入，法務祐銓可直接編輯 md 調整談判立場與條款文字，不需碰 Python。
 
-- [x] **Layer 4 原始檢索資料 UI 揭露（2026-07-02）**：使用者實測 Demo 後發現一個誠實度缺口——畫面上「⚖ 法律依據」只顯示 LLM 統整後的一句話，MCP 查到的真實法條原文跟向量庫查到的相似先例都被揉進同一句話，使用者完全看不出「這句話有幾成是真的查到的資料、幾成是 LLM 自己組織的措辭」，也沒辦法在 Demo 現場明確秀出雙軌檢索（法條快取 + 向量先例）各自的原始輸出。修法：`ReportSection`/`KeyChange` 新增兩個獨立欄位 `legal_citation_raw`（`_get_legal_citation()` 的原始回傳，未經 LLM 轉述）、`precedent_raw`（`find_similar_precedent()` 的原始 case_summary + negotiation_stance + 相似度百分比，同樣未經轉述）；`llm_service.py` 的 `analyze_flag()` 在呼叫完 Gemini/Claude/template 任一分支後統一附加這兩個欄位，不受 LLM 是否有寫 `legal_basis` 影響；`contracts.py`、`report_generator.py`（Markdown 報告）、`demo.html` 三處串接顯示。UI 呈現：展開風險卡片後，「⚖ 法律依據」（LLM 統整句）下方新增「🔎 Layer 4 原始檢索資料」區塊，藍色框「🏛 MCP 法條快取」+ 紫色框「📚 向量檢索先例」分開顯示，先例框內含相似度百分比。測試：(1) API 直接呼叫 `/compare/example/v6` 確認 3 筆風險旗標的兩個新欄位都有值、內容跟法條快取/先例庫原始資料逐字相符；(2) Markdown 報告新增對應行；(3) 用 Playwright 實際開瀏覽器點 v6 範例、展開風險卡片，畫面正確渲染 6 個 source-block（3 筆發現 × 2 種來源）、無 console error，截圖確認視覺呈現清楚（藍/紫兩色區塊 + 相似度標示）。
+- [x] **Layer 3 原始檢索資料 UI 揭露（2026-07-02）**：使用者實測 Demo 後發現一個誠實度缺口——畫面上「⚖ 法律依據」只顯示 LLM 統整後的一句話，MCP 查到的真實法條原文跟向量庫查到的相似先例都被揉進同一句話，使用者完全看不出「這句話有幾成是真的查到的資料、幾成是 LLM 自己組織的措辭」，也沒辦法在 Demo 現場明確秀出雙軌檢索（法條快取 + 向量先例）各自的原始輸出。修法：`ReportSection`/`KeyChange` 新增兩個獨立欄位 `legal_citation_raw`（`_get_legal_citation()` 的原始回傳，未經 LLM 轉述）、`precedent_raw`（`find_similar_precedent()` 的原始 case_summary + negotiation_stance + 相似度百分比，同樣未經轉述）；`llm_service.py` 的 `analyze_flag()` 在呼叫完 Gemini/Claude/template 任一分支後統一附加這兩個欄位，不受 LLM 是否有寫 `legal_basis` 影響；`contracts.py`、`report_generator.py`（Markdown 報告）、`demo.html` 三處串接顯示。UI 呈現：展開風險卡片後，「⚖ 法律依據」（LLM 統整句）下方新增「🔎 Layer 3 原始檢索資料」區塊，藍色框「🏛 MCP 法條快取」+ 紫色框「📚 向量檢索先例」分開顯示，先例框內含相似度百分比。測試：(1) API 直接呼叫 `/compare/example/v6` 確認 3 筆風險旗標的兩個新欄位都有值、內容跟法條快取/先例庫原始資料逐字相符；(2) Markdown 報告新增對應行；(3) 用 Playwright 實際開瀏覽器點 v6 範例、展開風險卡片，畫面正確渲染 6 個 source-block（3 筆發現 × 2 種來源）、無 console error，截圖確認視覺呈現清楚（藍/紫兩色區塊 + 相似度標示）。
 
 兩者都是純組裝層，複用既有的風險摘要、三層對策、Layer 3 法律依據，沒有新增判斷邏輯、沒有新資料源。
 
@@ -84,7 +84,7 @@
 - [x] **Commit 所有尚未進版的改動**：`PROJECT_PLAN.md`、`docs/architecture/系統架構_mermaid.md`、`src/api/contracts.py`、`src/api/schemas_api.py`、`frontend/demo.html`（commit `bf73892`）
 - [x] **寄出法務回信**：已寄出（2026-07-02）
 - [x] **修復 Verification Agent Case A/B/C 比對邏輯（2026-07-02）**：原本只比對 clause_id，同一條款的第二個風險維度會被誤判成「已審查過」而丟棄——用 v6 Demo 範例實測時發現這個 bug 是否觸發取決於 LLM 當次怎麼標 clause_id 字串，同一份合約重跑會不穩定。已修復：比對 key 改成 `(clause_id, 風險類別)`，規則引擎透過新增的 `RISK_CODE_CATEGORY` 對照表換算類別、Agent 沿用既有的 `categorize_candidate()`。v6 重跑 3 次結果穩定一致，3 份真實合約 + v2-v5 全數回歸測試通過。詳見 `docs/specs/verification_agent_spec.md` 第十一節。
-- [ ] **不做 Layer 4（pgvector + Taiwan Law MCP）建置**：2026-07-02 再次確認維持原決定，理由見「不做的（競賽前）」清單
+- [ ] **不做 Layer 3（pgvector + Taiwan Law MCP）建置**：2026-07-02 再次確認維持原決定，理由見「不做的（競賽前）」清單
 
 ### 週次 1（6/30 前，延續中）
 
@@ -122,7 +122,7 @@
 - ❌ 異質模型 MAS（Phase 2：Gemini + Claude 異質設計）
 - ❌ GraphRAG 跨條款依賴（Phase 2-3）
 - ❌ M365 Teams / SharePoint 整合（Phase 3）
-- ✅ **Layer 4：pgvector 語意檢索 + Taiwan Law MCP 法條查詢**（2026-07-02 已建置並接進系統，見下方備忘與「已完成」清單）
+- ✅ **Layer 3：pgvector 語意檢索 + Taiwan Law MCP 法條查詢**（2026-07-02 已建置並接進系統，見下方備忘與「已完成」清單）
 
   > **2026-07-02 技術探索備忘**（若之後要做，直接從這裡接續，不用重新調查）：
   > - **MCP 已找到現成、真實可用的套件**：`pip install mcp-taiwan-legal-db`（[github.com/lawchat-oss/mcp-taiwan-legal-db](https://github.com/lawchat-oss/mcp-taiwan-legal-db)，MIT 授權、免 API key、接法務部全國法規資料庫）。實際測試過用 MCP client 查詢「民法 252 條」，即時打到 `law.moj.gov.tw` 拿到真實條文「約定之違約金額過高者，法院得減至相當之數額。」——不是模擬，是真的查得到。

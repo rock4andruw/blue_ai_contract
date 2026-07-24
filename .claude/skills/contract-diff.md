@@ -16,7 +16,7 @@ description: 合約智能比對助理 - 比對 SLA/NDA/採購合約差異，產�
 ```text
 Parser → Alignment → Diff Engine → Risk Rule Engine（L1）→ Verification Agent（L2）
                                                                     ↓
-                                          Layer 4（法條快取 + 先例檢索）→ LLM Service → MAS → Report
+                                          Layer 3（法條快取 + 先例檢索）→ LLM Service → MAS → Report
                                                                     ↓
                                                              三層協商對策（按需）
 ```
@@ -25,7 +25,7 @@ Parser → Alignment → Diff Engine → Risk Rule Engine（L1）→ Verificatio
 - **Alignment**：LCS + Needleman-Wunsch 雙軌對齊，相似度後處理（≥75%）偵測重新編號條款
 - **Risk Rule Engine（Layer 1）**：15 條規則，pure Python，預定義類別內 high-risk recall 100%，不依賴 LLM
 - **Verification Agent（Layer 2）**：LLM 讀取差異內容（不讀全文），補上規則引擎看不懂的語意變化（如中文分數「千分之一」）。與 Layer 1 交叉核對，比對 key 為 `(clause_id, 風險類別)`。知識庫從 `contract-risk-analysis.md` 動態載入
-- **Layer 4（法律依據檢索）**：離線快取真實民法條文（`mcp-taiwan-legal-db` 查回）+ 本地向量檢索相似先例（`gemini-embedding-2`），協商建議只在真的檢索到依據時顯示，不編造
+- **Layer 3（法律依據檢索）**：離線快取真實民法條文（`mcp-taiwan-legal-db` 查回）+ 本地向量檢索相似先例（`gemini-embedding-2`），協商建議只在真的檢索到依據時顯示，不編造
 - **LLM Service**：Gemini 3.1 Flash Lite（主）/ Claude Sonnet 4.6 · Haiku 4.5（備）/ template fallback
 - **MAS Phase 1.5**：Agent A（嚴格）+ Agent B（平衡）平行驗證，Judge 矩陣輸出 confirmed / pending
 - **三層協商對策**：`POST /api/v1/contracts/negotiate`，按需呼叫，Static Playbook + LLM 精煉
@@ -118,5 +118,5 @@ ANTHROPIC_API_KEY=...    # 備援 LLM（選填）
 - MAS 兩個 Agent 使用同一模型（同質化限制），Phase 2 改用異質模型
 - 無 API Key 時自動使用 template fallback，Demo 不受影響
 - 合約資料不離開本機，無資料外傳疑慮
-- Layer 4 的法條/先例快取為離線建置，執行期純同步讀本地檔案，不即時連網、不依賴 MCP server 存活
+- Layer 3 的法條/先例快取為離線建置，執行期純同步讀本地檔案，不即時連網、不依賴 MCP server 存活
 - 已用 3 組真實公司合約（NDA / 軟體採購 / 軟體維護）驗證過，過程中發現並修復多個真實 bug（DOCX 表格內容遺失、並行請求排隊阻塞等），詳見 `next_step_plan.md`、`docs/specs/verification_agent_spec.md`

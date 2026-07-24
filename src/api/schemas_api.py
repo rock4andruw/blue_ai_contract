@@ -39,7 +39,7 @@ class KeyChange(BaseModel):
     mas_confidence: str = "low"        # high | low
     mas_agent_a_view: str = ""
     mas_agent_b_view: str = ""
-    # Layer 4 grounding
+    # Layer 3 grounding
     legal_basis: str = ""              # LLM-synthesized sentence citing the retrieved sources below
     legal_citation_raw: str = ""       # raw MCP-sourced Civil Code article text, unedited
     precedent_raw: str = ""            # raw vector-retrieved precedent case text, unedited
