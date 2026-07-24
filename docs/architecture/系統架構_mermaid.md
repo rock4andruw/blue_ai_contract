@@ -6,7 +6,7 @@ USER["👤 使用者（USER）\n法務 / PM / 業務"]
 
 subgraph P15["🟡 Phase 1.5 — MAS 雙重驗證（已完成）"]
     direction TB
-    SK1["📋 contract-risk-analysis.md\n15 條規則邏輯說明\n風險代碼對照表"]
+    SK1["📋 contract-risk-analysis.md\n14 條規則邏輯說明\n風險代碼對照表"]
     SK2["💬 negotiation-strategy.md\n協商框架 3 層方案\nAgent B 業界慣例知識庫"]
     SK3["📝 contract-diff.md\n系統總覽 · Demo 流程\nPhase 路線圖"]
     MA["🔴 Agent A（嚴格）\n極度保守買方法律顧問\n知識庫：最壞情況場景表"]
@@ -34,7 +34,7 @@ subgraph P1["🟢 Phase 1 — MVP（已完成）"]
         PARSER["📄 Parser\nMD / PDF / DOCX（含表格交錯讀取）\ntrack-change HTML 清理\npdfplumber · python-docx"]
         ALIGN["🔗 Alignment\nLCS + 條款號比對\nNeedleman-Wunsch DP\n相似度後處理 ≥75%"]
         DIFF["🔀 Diff Engine\n新增 / 修改 / 刪除\nDiffItem 標準化輸出"]
-        RISK["🛡 Risk Rule Engine（Layer 1）\n15 條規則 · pure Python\n預定義類別 100% recall\nrisk_code · risk_level · trigger_reason"]
+        RISK["🛡 Risk Rule Engine（Layer 1）\n14 條規則 · pure Python\n預定義類別 100% recall\nrisk_code · risk_level · trigger_reason"]
         VA["🔍 Verification Agent（Layer 2）\nLLM 語意補漏，讀 Diff 不讀全文\n交叉核對 key = (clause_id, 風險類別)\n候選規則紀錄 candidate_rules.jsonl（不自動生規則）"]
         LLM["🤖 LLM Service\nGemini 3.1 Flash Lite（主）\nClaude Sonnet 4.6 / Haiku 4.5（備）\nTemplate fallback（無 key 可跑）"]
         RPT["📊 Report Generator\nMarkdown 報告輸出\n審閱建議分層\nMAS 標籤整合"]
@@ -56,7 +56,7 @@ subgraph P1["🟢 Phase 1 — MVP（已完成）"]
     end
 
     subgraph EVAL["驗證指標"]
-        E1["📐 High-risk Recall: 100%\nOverall Detection: 61%\n樣本: 38 筆 gold set\nMAS pending 率: v4=0% / v3=67%"]
+        E1["📐 High-risk Recall: 100%\nOverall Detection: 67%（12/18）\n樣本: 38 筆 gold set\nMAS pending 率: v4=0% / v3=67%"]
     end
 
     UI --> API --> PARSER

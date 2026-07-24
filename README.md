@@ -22,7 +22,7 @@ Blue-AI 合約智能比對助理，讓法務與 PM 在 30 分鐘內完成過去�
 
 ### 智能風險分析（Layer 1：規則引擎）
 
-- Rule-based 風險引擎，15 條規則，預定義類別內 high-risk recall 100%
+- Rule-based 風險引擎，14 條規則，預定義類別內 high-risk recall 100%
 - 風險等級：高 / 中 / 低，含觸發原因與條款證據
 - 不依賴 LLM 做風險判斷，結果穩定可重現、免費、瞬間
 
@@ -142,7 +142,7 @@ bule-ai-team/
 │       ├── parser.py                  # 文件解析（MD/PDF/DOCX，含表格交錯讀取）
 │       ├── alignment.py               # 條款對齊
 │       ├── diff_engine.py             # 差異比對
-│       ├── risk_engine.py             # 規則引擎（Layer 1，15 條規則）
+│       ├── risk_engine.py             # 規則引擎（Layer 1，14 條規則）
 │       ├── verifier.py                # Verification Agent（Layer 2，LLM 語意補漏）
 │       ├── llm_service.py             # LLM 摘要與協商建議 + Layer 4 依據檢索
 │       ├── precedent_corpus.py        # Layer 4：先例語料庫 + 向量檢索邏輯
@@ -197,7 +197,7 @@ bule-ai-team/
       ↓
 [Diff Engine]   → 新增 / 修改 / 刪除清單
       ↓
-[Risk Engine]   → risk_flag / risk_level / trigger_reason（Layer 1，15 條規則）
+[Risk Engine]   → risk_flag / risk_level / trigger_reason（Layer 1，14 條規則）
       ↓
 [Verification Agent] → LLM 語意補漏（Layer 2），與 Layer 1 交叉核對
       ↓
@@ -223,7 +223,7 @@ bule-ai-team/
 | LLM | Gemini 3.1 Flash Lite（主）/ Claude Sonnet 4.6 · Haiku 4.5（備）/ template fallback |
 | 文件解析 | pdfplumber + python-docx（含表格交錯讀取）+ 原生 MD parser |
 | 差異演算法 | difflib SequenceMatcher + Needleman-Wunsch DP |
-| 風險分類 | Rule-based（Layer 1，15 條規則，純 Python）+ LLM 語意補漏（Layer 2） |
+| 風險分類 | Rule-based（Layer 1，14 條規則，純 Python）+ LLM 語意補漏（Layer 2） |
 | 協商依據檢索 | `mcp-taiwan-legal-db` 離線法條快取 + `gemini-embedding-2` 本地向量檢索（Layer 4） |
 | MAS | ThreadPoolExecutor + Judge 矩陣（gap-based） |
 | 後端 | FastAPI（`src/api/`，`run_in_threadpool` 確保並行請求不互相阻塞） |
@@ -235,10 +235,10 @@ bule-ai-team/
 | 指標 | 結果 | 目標 |
 | --- | --- | --- |
 | High-risk recall | **100%** | 100%（預定義類別內） |
-| Overall detection | 61% | >80% |
+| Overall detection | 67%（12/18） | >80% |
 | 測試樣本 | 38 筆（v1 vs v2-v5 gold set） | — |
 
-> Overall 61% 為設計選擇：rule engine 寧可高判不漏判，高風險一筆不漏是最重要的保證。
+> Overall 67%（12/18）為設計選擇：rule engine 寧可高判不漏判，高風險一筆不漏是最重要的保證。
 
 **真實公司合約驗證（2026-07-01/02，NDA / 軟體採購 / 軟體維護三組）**：拿真實合約測試時發現並修復多個規則引擎看不懂的真實案例，例如中文分數費率寫法「千分之一」（Regex 無法辨識，Verification Agent 語意層補上）、純新增/刪除條款因缺條號被靜默丟棄（採購合約一度有 138 段消失）、DOCX 原生表格內容完全遺失（付款排程、簽名欄）。詳見 `next_step_plan.md`、`docs/specs/verification_agent_spec.md`。
 
