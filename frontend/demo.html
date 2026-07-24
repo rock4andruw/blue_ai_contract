@@ -1211,8 +1211,8 @@
       ? '<span class="mode-badge">Gemini AI</span>'
       : '<span class="mode-badge">範本模式</span>';
     document.getElementById('result-meta').innerHTML =
-      `原始：<strong>${d.original_filename}</strong> &nbsp;→&nbsp; 修訂：<strong>${d.revised_filename}</strong>
-       &nbsp;｜&nbsp; ${d.compare_date} &nbsp;｜&nbsp; ${modeLabel}`;
+      `原始：<strong>${escHtml(d.original_filename)}</strong> &nbsp;→&nbsp; 修訂：<strong>${escHtml(d.revised_filename)}</strong>
+       &nbsp;｜&nbsp; ${escHtml(d.compare_date)} &nbsp;｜&nbsp; ${modeLabel}`;
     document.getElementById('result-time-badge').textContent = `⚡ ${d.processing_time_ms}ms`;
 
     // verdict
