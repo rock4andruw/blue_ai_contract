@@ -77,7 +77,7 @@ LLM 不決定風險等級，規則引擎判定後 LLM 才負責翻成白話並�
 | `parser.py` | MD / PDF / DOCX 解析。DOCX 依 `doc.element.body` 原始順序交錯讀取段落與表格（`_iter_docx_block_items`），不遺漏原生 Word 表格 |
 | `alignment.py` | LCS + Needleman-Wunsch 對齊，difflib ≥ 75% 相似度後處理（處理重新編號條款） |
 | `diff_engine.py` | 新增 / 修改 / 刪除差異比對 |
-| `risk_engine.py` | 15 條規則（pure Python），high-risk recall 100% |
+| `risk_engine.py` | 14 條規則（pure Python），high-risk recall 100%（另有 2 個設計類別未實作，見第 6 節） |
 | `verifier.py` | **Verification Agent（Layer 2）**：LLM 語意補漏，只讀變動條款不讀全文，與規則引擎交叉核對（key=`(clause_id, 風險類別)`），Case C 發現記錄進 `candidate_rules.jsonl`（不自動生規則） |
 | `llm_service.py` | Gemini（主）/ Claude（備）/ template fallback。`generate_sections()` 回傳所有高風險 + top 3 中風險；`answer_report_question()` 是報告內問答 |
 | `precedent_corpus.py` | Layer 3 先例向量檢索：10 筆合成案例，`gemini-embedding-2` 真實向量，本地 cosine similarity |
@@ -91,25 +91,27 @@ LLM 不決定風險等級，規則引擎判定後 LLM 才負責翻成白話並�
 
 ---
 
-## 6. 15 條風險規則
+## 6. 風險規則設計表（15 個設計類別，13 個已實作）
 
-| 規則代碼 | 等級 | 說明 |
-|---|---|---|
-| RISK_SLA_DEGRADE | 高 | SLA 可用率降低 ≥ 0.5% |
-| RISK_RESPONSE_TIME_EXTENDED | 高 | 回應 / 修復時間拉長 |
-| RISK_PENALTY_WEAKENED | 高 | 違約折讓比例降低 |
-| RISK_LIABILITY_CAP_CHANGED | 高 | 賠償上限縮水 |
-| RISK_PROTECTION_REMOVED | 高 | 保護性條款刪除 |
-| RISK_CONFIDENTIALITY_WEAKENED | 高 | 保密期間縮短 |
-| RISK_DATA_CONTROL_LOST | 高 | 資料控制權降低 |
-| RISK_IP_OWNERSHIP_CHANGED | 高 | 智財權歸屬改為乙方 |
-| RISK_LIABILITY_DIRECTION_REVERSED | 高 | 違約賠償責任方向反轉 |
-| RISK_CONFIDENTIALITY_SCOPE_CHANGED | 高 | 保密從單向→雙向 |
-| RISK_LIABILITY_INCREASE | 中 | 責任加重（對甲方有利） |
-| RISK_TERMINATION_CHANGED | 中 | 終止條款變更 |
-| RISK_FORCE_MAJEURE_EXPANDED | 中 | 不可抗力範圍擴大 |
-| RISK_JURISDICTION_CHANGED | 中 | 管轄法院改變 |
-| RISK_PROTECTION_ADDED | 低 | 新增保護條款（正向） |
+**2026-07-16 查證**：這張表列的是設計時定義的 15 個風險類別，但 `risk_engine.py` 的 `RULES` 清單只有 **14 個規則函式**，逐一 grep 核實後發現 `RISK_LIABILITY_INCREASE`、`RISK_PROTECTION_ADDED` 這兩個「對甲方有利」的正向類別**從未被任何程式碼實際發出過**——系統目前只偵測不利風險，正向發現這塊是設計了但沒做的空白。下表標註哪些已實作。
+
+| 規則代碼 | 等級 | 說明 | 實作狀態 |
+|---|---|---|---|
+| RISK_SLA_DEGRADE | 高 | SLA 可用率降低 ≥ 0.5% | ✅ |
+| RISK_RESPONSE_TIME_EXTENDED | 高 | 回應 / 修復時間拉長 | ✅ |
+| RISK_PENALTY_WEAKENED | 高 | 違約折讓比例降低 | ✅ |
+| RISK_LIABILITY_CAP_CHANGED | 高 | 賠償上限縮水 | ✅ |
+| RISK_PROTECTION_REMOVED | 高 | 保護性條款刪除 | ✅ |
+| RISK_CONFIDENTIALITY_WEAKENED | 高 | 保密期間縮短 | ✅ |
+| RISK_DATA_CONTROL_LOST | 高 | 資料控制權降低 | ✅ |
+| RISK_IP_OWNERSHIP_CHANGED | 高 | 智財權歸屬改為乙方 | ✅ |
+| RISK_LIABILITY_DIRECTION_REVERSED | 高 | 違約賠償責任方向反轉 | ✅ |
+| RISK_CONFIDENTIALITY_SCOPE_CHANGED | 高 | 保密從單向→雙向 | ✅ |
+| RISK_LIABILITY_INCREASE | 中 | 責任加重（對甲方有利） | ❌ 未實作 |
+| RISK_TERMINATION_CHANGED | 中 | 終止條款變更 | ✅ |
+| RISK_FORCE_MAJEURE_EXPANDED | 中 | 不可抗力範圍擴大 | ✅ |
+| RISK_JURISDICTION_CHANGED | 中 | 管轄法院改變 | ✅ |
+| RISK_PROTECTION_ADDED | 低 | 新增保護條款（正向） | ❌ 未實作 |
 
 ---
 
@@ -200,8 +202,9 @@ Demo 建議流程：
 
 `docs/harness/skills_runtime_assets.md` 有完整說明，這裡只講重點：
 
-- **4 個平面 `.md` 檔是 runtime prompt 資產，不是 Claude Code skill**：`contract-diff.md`、`contract-risk-analysis.md`（Agent A + Verification Agent 知識庫）、`negotiation-strategy.md`（Agent B + 協商框架 + 三層 Playbook 知識庫）、`report-writing.md`。被 `mas_service.py`/`verifier.py`/`llm_service.py`/`negotiate_service.py` 用 `_load_skill_section()` 在 runtime 讀取，**絕不可搬移/改格式/改名**，settings.json deny + hook 精確保護這 4 個檔名。編輯內容可以。
+- **2 個平面 `.md` 檔是 runtime prompt 資產，不是 Claude Code skill**：`contract-risk-analysis.md`（Agent A + Verification Agent 知識庫）、`negotiation-strategy.md`（Agent B + 協商框架 + 三層 Playbook 知識庫）。被 `mas_service.py`/`verifier.py`/`llm_service.py`/`negotiate_service.py` 用 `_load_skill_section()` 精確讀取檔內特定 `##` 段落（非整份檔案），**絕不可搬移/改格式/改名**，settings.json deny + hook 精確保護這 2 個檔名。編輯內容可以。
 - **`frontend-design/SKILL.md` 是正式的 Claude Code skill**（2026-07-05 轉正），可以正常呼叫，不受上述限制。
+- **`contract-diff.md`、`report-writing.md` 已封存**（2026-07-16，`archive/skills_dead_assets/`）：逐段落 grep 核實後證實從未被任何 loader 引用，原本誤算進保護範圍，詳見 `docs/harness/skills_runtime_assets.md` 第 4 節。
 
 ---
 

@@ -24,7 +24,7 @@ import sys
 
 # --- 敏感路徑偵測 ---
 _SAFE_ENV = {".env.example", ".env.sample", ".env.template", ".env.dist"}
-_CONTRACT_NAMES = ("pic_contract", "nda_contract", "sla_contract")
+_CONTRACT_NAMES = ("nda_contract", "sla_contract")
 _GLOB = re.compile(r"[*?\[]")
 
 # --- 動詞分類 ---
@@ -37,12 +37,12 @@ _EXFIL_VERBS = {
 }
 # 這些會弄壞 skills 結構
 _SKILL_MUTATORS = {"mv", "rm", "rename", "trash"}
-# 只有這 4 個檔案真的被 src/services/contract 的 4 處 runtime loader 讀取
-# （見 docs/harness/skills_runtime_assets.md）。frontend-design.md 不在保護
-# 範圍內——2026-07-05 查證過沒有任何 src/ 程式碼讀取它，可以自由搬移/改格式。
+# 只有這 2 個檔案真的被 src/services/contract 的 4 處 runtime loader 讀取
+# （見 docs/harness/skills_runtime_assets.md）。frontend-design.md（2026-07-05）、
+# contract-diff.md／report-writing.md（2026-07-16，grep 全 src/ 核實零引用，
+# 已封存至 archive/skills_dead_assets/）皆不在保護範圍內。
 _PROTECTED_SKILL_FILES = {
-    "contract-diff.md", "contract-risk-analysis.md",
-    "negotiation-strategy.md", "report-writing.md",
+    "contract-risk-analysis.md", "negotiation-strategy.md",
 }
 # 動詞抽取時要跳過的前綴/包裝
 _WRAPPERS = {"sudo", "env", "nohup", "time", "command", "builtin",
