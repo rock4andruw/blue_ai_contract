@@ -131,8 +131,22 @@ def _extract_months(text: str) -> Optional[float]:
 
 
 def _extract_years(text: str) -> Optional[float]:
+    """Extract a year count from Arabic (5年) or Chinese numeral (五年/二年) notation.
+
+    Contracts (especially NDAs) commonly write duration in Chinese numerals
+    rather than Arabic digits -- without this fallback, rule_confidentiality_weakened()
+    silently misses any "五年→二年" style change (confirmed via
+    scratchpad/test_nda_confidentiality_rule.py: fires correctly on "5年→2年"
+    but not at all on the Chinese-numeral equivalent).
+    """
     m = re.search(r'(\d+(?:\.\d+)?)\s*年', text)
-    return float(m.group(1)) if m else None
+    if m:
+        return float(m.group(1))
+    m = re.search(r'([零一二三四五六七八九十]+)\s*年', text)
+    if m:
+        num = _cn_num_to_int(m.group(1))
+        return float(num) if num is not None else None
+    return None
 
 
 def rule_sla_degrade(diff: DiffItem) -> Optional[RiskFlag]:
@@ -531,19 +545,26 @@ def rule_liability_direction_reversed(diff: DiffItem) -> Optional[RiskFlag]:
     return None
 
 
+_BILATERAL_MARKERS = ["雙方", "互負保密義務", "互相保密", "互為保密", "雙務"]
+
+
 def rule_confidentiality_scope_changed(diff: DiffItem) -> Optional[RiskFlag]:
-    """保密義務範圍改變（單務→雙務，或保密主體改變）。"""
+    """保密義務範圍改變（單務→雙務）。
+
+    僅在新版明確出現「雙方互保」這類雙務用語、且舊版沒有時才判定為範圍改變。
+    先前版本用「乙方…接受方」關鍵字共現當代理指標，會被純粹的用詞替換（例如
+    條款全文把「乙方」改稱「接受方」但義務主體完全沒變）誤觸發——「接受方」
+    是 NDA 常見的角色泛稱，不能直接當作「變雙務」的證據（見
+    scratchpad/test_confidentiality_scope_bug.py 的假警報重現案例）。
+    """
     if diff.change_type != "modified":
         return None
-    keywords = ["保密義務", "機密資訊", "揭露方", "接受方"]
-    if not any(k in (diff.old_text or "") + (diff.new_text or "") for k in keywords):
+    keywords = ["保密義務", "機密資訊"]
+    if not any(k in (diff.old_text or "") for k in keywords):
         return None
-    # 保密主體從「乙方」單向變為「雙方」或「接受方/揭露方」互換
-    scope_change = (
-        "乙方" in (diff.old_text or "") and "接受方" in (diff.new_text or "")
-    ) or (
-        "甲方（揭露方）" in (diff.old_text or "") and "揭露方" in (diff.new_text or "")
-    )
+    old_bilateral = any(m in (diff.old_text or "") for m in _BILATERAL_MARKERS)
+    new_bilateral = any(m in (diff.new_text or "") for m in _BILATERAL_MARKERS)
+    scope_change = new_bilateral and not old_bilateral
     if scope_change:
         return RiskFlag(
             clause_id=diff.clause_id,
