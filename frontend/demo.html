@@ -1369,7 +1369,7 @@
           <div style="background:var(--red-light);border-left:4px solid var(--red);padding:12px 16px;border-radius:var(--radius);margin-bottom:14px;font-size:13px;color:var(--red);">
             <strong>⚠ 文字覆蓋率警告</strong><br>
             原始文件覆蓋率 ${origRatio}% | 修訂文件覆蓋率 ${revRatio}% (閾值: ${threshold}%)
-            ${cg.missing_fragments.length ? `<br>無法解析片段: ${cg.missing_fragments.slice(0,3).join(' | ')}${cg.missing_fragments.length > 3 ? '...' : ''}` : ''}
+            ${cg.missing_fragments.length ? `<br>無法解析片段: ${cg.missing_fragments.slice(0,3).map(escHtml).join(' | ')}${cg.missing_fragments.length > 3 ? '...' : ''}` : ''}
             <br><span style="font-size:12px;opacity:.8;">建議人工複核原始檔案確保未遺漏任何內容。</span>
           </div>
         `;
@@ -1390,8 +1390,8 @@
       ? '<span class="mode-badge">Gemini AI</span>'
       : '<span class="mode-badge">範本模式</span>';
     document.getElementById('result-meta').innerHTML =
-      `原始：<strong>${d.original_filename}</strong> &nbsp;→&nbsp; 修訂：<strong>${d.revised_filename}</strong>
-       &nbsp;｜&nbsp; ${d.compare_date} &nbsp;｜&nbsp; ${modeLabel}`;
+      `原始：<strong>${escHtml(d.original_filename)}</strong> &nbsp;→&nbsp; 修訂：<strong>${escHtml(d.revised_filename)}</strong>
+       &nbsp;｜&nbsp; ${escHtml(d.compare_date)} &nbsp;｜&nbsp; ${modeLabel}`;
     document.getElementById('result-time-badge').textContent = `⚡ ${d.processing_time_ms}ms`;
 
     // verdict
